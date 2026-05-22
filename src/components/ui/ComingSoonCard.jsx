@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { useLottie } from "lottie-react";
+import LottiePlayer from "./LottiePlayer";
 import hourglassAnimation from "../../assets/animations/hourglass_loading.json";
 import Card from "./Card";
 
@@ -12,12 +12,6 @@ export const ComingSoonCard = ({
   estimatedArrival = "Q3 2026",
   showHourglass = true
 }) => {
-  const defaultLottieOptions = {
-    animationData: hourglassAnimation,
-    loop: true,
-    autoplay: true,
-  };
-  const { View } = useLottie(defaultLottieOptions);
 
   return (
     <Card className="relative overflow-hidden p-8 flex flex-col md:flex-row items-center justify-between gap-8 border-violet-500/20 dark:border-violet-500/10">
@@ -66,7 +60,7 @@ export const ComingSoonCard = ({
 
       {showHourglass && (
         <div className="w-48 h-48 md:w-56 md:h-56 flex-shrink-0 flex items-center justify-center bg-slate-50 dark:bg-slate-950/40 rounded-2xl p-4 border border-slate-200/40 dark:border-slate-800/40">
-          <div className="w-full h-full">{View}</div>
+          <LottiePlayer animationData={hourglassAnimation} loop={true} className="w-full h-full" />
         </div>
       )}
     </Card>
