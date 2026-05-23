@@ -9,7 +9,12 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [greeting, setGreeting] = useState("Hello");
+  const greeting = (() => {
+    const hours = new Date().getHours();
+    if (hours < 12) return "Good morning";
+    if (hours < 18) return "Good afternoon";
+    return "Good evening";
+  })();
   const notificationRef = useRef(null);
   const navigate = useNavigate();
 
@@ -22,14 +27,6 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Determine animated time greeting
-  useEffect(() => {
-    const hours = new Date().getHours();
-    if (hours < 12) setGreeting("Good morning");
-    else if (hours < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;

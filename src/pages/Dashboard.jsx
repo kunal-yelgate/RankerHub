@@ -10,26 +10,27 @@ import RankPreview from "../components/dashboard/RankPreview";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import GradientButton from "../components/ui/GradientButton";
 
-export const Dashboard = () => {
-  // Generate dummy data for GitHub contribution graph mockup
-  // 52 weeks * 7 days = 364 cells. We'll show a compact 24-column grid (168 cells) for responsiveness.
-  const heatmapColors = [
-    "bg-slate-100 dark:bg-slate-800/40", // 0 contributions
-    "bg-violet-500/10 dark:bg-violet-500/10", // low
-    "bg-violet-500/30 dark:bg-violet-500/30", // medium-low
-    "bg-violet-500/60 dark:bg-violet-500/50", // medium-high
-    "bg-violet-600 dark:bg-violet-600" // high
-  ];
+// Generate dummy data for GitHub contribution graph mockup
+// 52 weeks * 7 days = 364 cells. We'll show a compact 24-column grid (168 cells) for responsiveness.
+const heatmapColors = [
+  "bg-slate-100 dark:bg-slate-800/40", // 0 contributions
+  "bg-violet-500/10 dark:bg-violet-500/10", // low
+  "bg-violet-500/30 dark:bg-violet-500/30", // medium-low
+  "bg-violet-500/60 dark:bg-violet-500/50", // medium-high
+  "bg-violet-600 dark:bg-violet-600" // high
+];
 
-  const heatmapCells = Array.from({ length: 168 }, () => {
-    // Weighted distribution to look like actual active coding
-    const rand = Math.random();
-    if (rand < 0.35) return 0;
-    if (rand < 0.65) return 1;
-    if (rand < 0.8) return 2;
-    if (rand < 0.93) return 3;
-    return 4;
-  });
+const heatmapCells = Array.from({ length: 168 }, () => {
+  // Weighted distribution to look like actual active coding
+  const rand = Math.random();
+  if (rand < 0.35) return 0;
+  if (rand < 0.65) return 1;
+  if (rand < 0.8) return 2;
+  if (rand < 0.93) return 3;
+  return 4;
+});
+
+export const Dashboard = () => {
 
   const challenges = [
     {

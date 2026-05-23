@@ -43,7 +43,7 @@ export const Login = () => {
 
 	{/* Back to Home */}
           <div className="flex justify-start -mb-2">
-            
+            <a
               href="/"
               className="group flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors duration-200 font-semibold"
             >
