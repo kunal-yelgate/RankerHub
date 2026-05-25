@@ -12,6 +12,13 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
+    // Helper: Check if update only affects social fields
+    function isOnlySocialUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let socialFields = ['linkedinUrl', 'instagramHandle', 'discordUsername', 'updatedAt'];
+      return affected.hasOnly(socialFields);
+    }
+
     match /users/{uid} {
       // Leaderboard requires anyone logged in to view profiles
       allow read: if isAuthenticated();
@@ -21,7 +28,11 @@ service cloud.firestore {
         && request.resource.data.city == "Mumbai"
         && (request.resource.data.onboardingStatus == "incomplete" || request.resource.data.onboardingStatus == "complete");
 
-      // Updates: Let the user update their own profile, under strict rules
+      // RULE 1: Allow social profile updates (LinkedIn, Instagram, Discord) ANYTIME
+      // This bypasses the strict onboarding/points rules for social links only
+      allow update: if isOwner(uid) && isOnlySocialUpdate();
+
+      // RULE 2: Original strict rules for onboarding and points updates
       allow update: if isOwner(uid) 
         // 1. If they were already onboarded (onboardingStatus == "complete"), they cannot change immutable onboarding fields
         && (resource.data.onboardingStatus != "complete" || (
@@ -50,7 +61,7 @@ service cloud.firestore {
           (request.resource.data.points.totalPoints > resource.data.points.totalPoints && request.resource.data.points.totalPoints - resource.data.points.totalPoints <= 100)
         );
 
-      // Referrer update: Allow another user to atomically increment a referrer's referralPoints by exactly 100 points
+      // RULE 3: Referrer update - Allow another user to atomically increment a referrer's referralPoints by exactly 100 points
       // as part of the onboarding referral transaction.
       allow update: if isAuthenticated() 
         && request.auth.uid != uid // must be the referred user performing the write
