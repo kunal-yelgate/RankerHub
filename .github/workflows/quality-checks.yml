@@ -38,7 +38,7 @@ jobs:
           inputs: '**/*.md'
 
       - name: Spell Check
-        uses: streetsidesoftware/cspell-action@v6
+        uses: streetsidesoftware/cspell-action@v8
         with:
           files: 'src/**/*.{js,jsx,ts,tsx,css,md}'
           inline_options: '--no-progress --no-summary'
