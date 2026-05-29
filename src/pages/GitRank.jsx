@@ -11,7 +11,7 @@ import axios from "axios";
 
 export const GitRank = () => {
   const { user, userData, fetchGitHubStats, login } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedLanguage, setSelectedLanguage] = useState("All");
 

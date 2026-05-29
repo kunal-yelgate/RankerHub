@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, Search, Menu, X, Check, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,7 +13,6 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef(null);
   const greeting = (() => {
@@ -25,17 +24,17 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
   const notificationRef = useRef(null);
   const navigate = useNavigate();
 
-  // Handle search input and show results
-  useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      const results = searchLeaderboard(searchQuery);
-      setSearchResults(results.slice(0, 5)); // Limit to 5 results
-      setShowSearchResults(true);
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false);
-    }
-  }, [searchQuery]);
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const searchResults = useMemo(() => {
+    if (!hasSearchQuery) return [];
+    return searchLeaderboard(searchQuery).slice(0, 5);
+  }, [hasSearchQuery, searchQuery]);
+
+  const handleSearchChange = (e) => {
+    const nextQuery = e.target.value;
+    setSearchQuery(nextQuery);
+    setShowSearchResults(nextQuery.trim().length > 0);
+  };
 
   // Close notifications dropdown on click outside
   useEffect(() => {
@@ -97,7 +96,7 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
                 type="text"
                 placeholder="Search leaderboard, focus, or challenges..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
                 autoFocus
                 className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:text-white transition-all"
               />
@@ -202,7 +201,7 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
           type="text"
           placeholder="Search leaderboard, languages or challenges..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
         />
         

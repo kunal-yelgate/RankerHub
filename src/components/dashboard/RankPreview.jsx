@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, ChevronRight, Lock, CheckCircle2 } from "lucide-react";
+import { ChevronRight, Lock, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { systemBadges } from "../../constants";
 import Card from "../ui/Card";
