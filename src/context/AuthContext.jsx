@@ -110,8 +110,8 @@ export const AuthProvider = ({ children }) => {
           email: authUser.email || "",
           avatar,
           onboardingStatus: "incomplete",
-          city: "Mumbai",
-          streak: 1,
+          city: "",
+          streak: 0,
           lastLogin: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           points: {
