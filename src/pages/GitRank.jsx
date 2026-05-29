@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Filter, Star, Trophy, RefreshCw, GitCommit, Calendar, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
 import { collection, query, where, onSnapshot, doc, runTransaction } from "firebase/firestore";
+import { useSearchParams } from "react-router-dom";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/ui/Card";
@@ -10,7 +11,8 @@ import axios from "axios";
 
 export const GitRank = () => {
   const { user, userData, fetchGitHubStats, login } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedLanguage, setSelectedLanguage] = useState("All");
 
   // Real-time leaderboard state

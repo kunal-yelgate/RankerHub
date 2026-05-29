@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Toast from "../components/ui/Toast";
 import LottiePlayer from "../components/ui/LottiePlayer";
 import {
   MapPin,
@@ -438,6 +437,15 @@ export const Profile = () => {
             ))}
           </div>
 
+            {toast && (
+            <div className={`fixed bottom-4 right-4 p-4 rounded-xl border z-50 max-w-sm ${
+            toast.type === "success" 
+           ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+            : "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+          }`}>
+    <p className="text-sm font-semibold">{toast.message}</p>
+  </div>
+)}
         </div>
 
       </Card>
