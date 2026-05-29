@@ -11,6 +11,7 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const greeting = (() => {
     const hours = new Date().getHours();
     if (hours < 12) return "Good morning";
@@ -44,14 +45,49 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      setIsMobileSearchOpen(false);
       // Mock navigation to dashboard or search page
       navigate(`/dashboard?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
   return (
-    <nav className="sticky top-0 z-30 h-16 border-b border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md shadow-sm transition-all duration-300 px-4 md:px-6 flex items-center justify-between">
+    <nav className="sticky top-0 z-30 h-16 border-b border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md shadow-sm transition-all duration-300 px-4 md:px-6 flex items-center justify-between relative">
       
+      {/* Mobile Search Overlay */}
+      <AnimatePresence>
+        {isMobileSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute inset-0 bg-white dark:bg-slate-950 px-4 flex items-center gap-3 z-50 md:hidden"
+          >
+            <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+              <Search className="w-4.5 h-4.5 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search leaderboard, focus, or challenges..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:text-white transition-all"
+              />
+            </form>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSearchOpen(false);
+                setSearchQuery("");
+              }}
+              className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Left side: Mobile Toggle & Greeting */}
       <div className="flex items-center gap-3">
         <button
@@ -91,7 +127,10 @@ export const Navbar = ({ toggleMobile, isMobileOpen }) => {
       {/* Right side: Actions, Theme, Notifications, Profile */}
       <div className="flex items-center gap-3">
         {/* Search toggle for small screens */}
-        <button className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition cursor-pointer">
+        <button 
+          onClick={() => setIsMobileSearchOpen(true)}
+          className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition cursor-pointer"
+        >
           <Search className="w-5 h-5" />
         </button>
 
