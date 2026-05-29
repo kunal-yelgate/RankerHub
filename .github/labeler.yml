@@ -1,5 +1,5 @@
 # Labeler Configuration
-# This configuration file is used by actions/labeler to automatically apply labels to PRs based on modified files.
+# Automatically apply labels to PRs based on modified files or branch names.
 # For more info: https://github.com/actions/labeler
 
 documentation:
@@ -20,14 +20,33 @@ frontend:
 backend:
   - changed-files:
       - any-glob-to-any-file:
+          - 'api/**'
+          - 'server/**'
           - 'firestore.rules'
           - 'firebase.json'
           - '.firebaserc'
 
-code:
+ci/cd:
   - changed-files:
       - any-glob-to-any-file:
-          - 'src/**/*.js'
-          - 'src/**/*.jsx'
-          - 'src/**/*.ts'
-          - 'src/**/*.tsx'
+          - '.github/workflows/**'
+
+gssoc26:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/ISSUE_TEMPLATE/*gssoc*'
+  - branch:
+      - '*gssoc*'
+      - '*GSSoC*'
+      - '*Gssoc*'
+      - '*GSSOC*'
+
+nsoc26:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/ISSUE_TEMPLATE/*nsoc*'
+  - branch:
+      - '*nsoc*'
+      - '*NSoC*'
+      - '*Nsoc*'
+      - '*NSOC*'
