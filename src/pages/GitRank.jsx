@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Filter, Star, Trophy, RefreshCw, GitCommit, Calendar, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, runTransaction } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/ui/Card";
@@ -118,24 +118,33 @@ export const GitRank = () => {
       const ghStats = await fetchGitHubStats(user.uid, userData.githubUsername);
       const userRef = doc(db, "users", user.uid);
 
-      const currentReferralPoints = userData.points?.referralPoints || 0;
-      const currentCodingVersePoints = userData.points?.codingVersePoints || 0;
-      const currentStreakPoints = userData.points?.streakPoints || 0;
+      // Execute atomic transaction to prevent write-stomping points race condition
+      await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist in Firestore!");
+        }
 
-      const newGitRankPoints = ghStats.gitRankPoints;
-      const newTotalPoints = newGitRankPoints + currentReferralPoints + currentCodingVersePoints + currentStreakPoints;
+        const liveData = userDoc.data();
+        const currentReferralPoints = liveData.points?.referralPoints || 0;
+        const currentCodingVersePoints = liveData.points?.codingVersePoints || 0;
+        const currentStreakPoints = liveData.points?.streakPoints || 0;
 
-      await updateDoc(userRef, {
-        "githubStats.commits": ghStats.commits,
-        "githubStats.prs": ghStats.prs,
-        "githubStats.reviews": ghStats.reviews,
-        "githubStats.repos": ghStats.publicRepos,
-        "githubStats.stars": ghStats.stars,
-        "githubStats.followers": ghStats.followers,
-        "githubStats.primaryLanguage": ghStats.primaryLanguage,
-        "points.gitRankPoints": newGitRankPoints,
-        "points.totalPoints": newTotalPoints,
-        "lastSync": new Date().toISOString()
+        const newGitRankPoints = ghStats.gitRankPoints;
+        const newTotalPoints = newGitRankPoints + currentReferralPoints + currentCodingVersePoints + currentStreakPoints;
+
+        transaction.update(userRef, {
+          "githubStats.commits": ghStats.commits,
+          "githubStats.prs": ghStats.prs,
+          "githubStats.reviews": ghStats.reviews,
+          "githubStats.repos": ghStats.publicRepos,
+          "githubStats.stars": ghStats.stars,
+          "githubStats.followers": ghStats.followers,
+          "githubStats.primaryLanguage": ghStats.primaryLanguage,
+          "points.gitRankPoints": newGitRankPoints,
+          "points.totalPoints": newTotalPoints,
+          "lastSync": new Date().toISOString()
+        });
       });
 
       setSyncSuccess("GitHub statistics updated in real time!");
