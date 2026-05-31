@@ -118,7 +118,6 @@ export const MobileSidebar = ({ isOpen, close }) => {
                       to={link.path}
                       onClick={close}
                       className="block relative"
-                      {...(link.path === "/about" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     >
                       <div
                         className={`

@@ -71,20 +71,26 @@ export const analytics = analyticsInstance;
 export const storage = app ? getStorage(app) : null;
 
 // Helper function to sign in with GitHub
-export const signInWithGitHub = async () => {
+export const signInWithGitHub = async (requestRepoScope = false) => {
   if (!auth) {
     throw new Error("Firebase is not configured. Add the required VITE_FIREBASE_* values before signing in.");
   }
 
   try {
-    const result = await signInWithPopup(auth, githubProvider);
-    // The signed-in user info
+    const dynamicProvider = new GithubAuthProvider();
+    dynamicProvider.addScope('read:user');
+    dynamicProvider.addScope('user:email');
+    
+    if (requestRepoScope) {
+      dynamicProvider.addScope('repo');
+    }
+
+    const result = await signInWithPopup(auth, dynamicProvider);
     const user = result.user;
-    // This gives you a GitHub Access Token
+    
     const credential = GithubAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
     
-    // Store additional user data if needed
     const userData = {
       uid: user.uid,
       email: user.email,
@@ -94,21 +100,14 @@ export const signInWithGitHub = async () => {
       lastLogin: new Date().toISOString(),
     };
     
-    // You can save this to Firestore here
-    // await saveUserToFirestore(userData);
-    
-    return { user, accessToken, userData };
+    return { user, accessToken, userData, result }; 
   } catch (error) {
     console.error("GitHub sign-in error:", error);
-    // Handle specific errors
     if (error.code === 'auth/account-exists-with-different-credential') {
-      throw new Error('An account already exists with the same email address but different sign-in credentials.', { cause: error });
+      throw new Error('An account already exists with the same email address.', { cause: error });
     }
     if (error.code === 'auth/popup-closed-by-user') {
       throw new Error('Sign-in popup was closed before completing.', { cause: error });
-    }
-    if (error.code === 'auth/popup-blocked') {
-      throw new Error('Sign-in popup was blocked by the browser. Please allow popups for this site.', { cause: error });
     }
     throw error;
   }

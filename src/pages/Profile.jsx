@@ -23,7 +23,7 @@ import SectionHeader from "../components/ui/SectionHeader";
 import GradientButton from "../components/ui/GradientButton";
 
 export const Profile = () => {
-  const { userData, user, setUserData } = useAuth();
+  const { userData, user, setUserData, login } = useAuth();
   const [copied, setCopied] = useState(false);
   const [rank, setRank] = useState("Loading...");
   const [toast, setToast] = useState(null);
@@ -158,6 +158,28 @@ export const Profile = () => {
       setToast({ message: `Failed to update ${type}. Please try again.`, type: "error" });
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // Handle Private Repository Sync Toggle
+  const handlePrivateSyncToggle = async () => {
+    if (!user) return;
+    try {
+      if (!userData?.privateRepoSyncEnabled) {
+        setToast({ message: "Redirecting to GitHub for permission...", type: "success" });
+        await login(true); 
+        setToast({ message: "Private repository sync enabled successfully!", type: "success" });
+      } else {
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, { privateRepoSyncEnabled: false });
+        if (setUserData) {
+          setUserData(prev => ({ ...prev, privateRepoSyncEnabled: false }));
+        }
+        setToast({ message: "Private repository sync disabled.", type: "success" });
+      }
+    } catch (err) {
+      console.error("Toggle sync error:", err);
+      setToast({ message: "Failed to update sync preferences. Please try again.", type: "error" });
     }
   };
 
@@ -448,6 +470,35 @@ export const Profile = () => {
 )}
         </div>
 
+      </Card>
+
+      {/*   PRIVATE REPO SYNC CARD  */}
+      <Card className="mb-6 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-slate-200/50 dark:border-slate-800/50">
+        <div>
+          <h3 className="font-extrabold text-lg text-slate-900 dark:text-white my-0 flex items-center gap-2">
+            <Github className="w-5 h-5 text-slate-700 dark:text-slate-300" /> Private Repository Sync
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            Enable indexing for private repositories to earn points for your private commits, PRs, and reviews. <br className="hidden sm:block"/>
+            <span className="text-xs text-violet-500">(Requires GitHub re-authentication)</span>
+          </p>
+        </div>
+        
+        <button
+          onClick={handlePrivateSyncToggle}
+          className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 flex-shrink-0 ${
+            userData?.privateRepoSyncEnabled ? 'bg-violet-500' : 'bg-slate-300 dark:bg-slate-700'
+          }`}
+          role="switch"
+          aria-checked={userData?.privateRepoSyncEnabled}
+        >
+          <span className="sr-only">Enable Private Repo Sync</span>
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+              userData?.privateRepoSyncEnabled ? 'translate-x-8' : 'translate-x-1'
+            }`}
+          />
+        </button>
       </Card>
 
       {/* Grid: Statistics */}

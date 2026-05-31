@@ -8,10 +8,10 @@ export const PublicFooter = () => {
         <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">Home</Link>
         <Link to="/#features" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">Features</Link>
         <Link to="?modal=how-it-works" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">How it Works</Link>
-        <Link to="/about" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">About Us</Link>
+        <Link to="/about" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">About Us</Link>
         <a href="https://github.com/indresh404/RankerHub.git" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">GitHub Repository</a>
-        <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">Terms of Service</a>
-        <a href="#" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">Privacy Policy</a>
+        <Link to="/terms" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">Terms of Service</Link>
+        <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors font-semibold">Privacy Policy</Link>
       </div>
       <p className="font-semibold">© 2026 RankerHub. Built with React + Vite + TailwindCSS.</p>
       <p className="mt-2 px-4">Premium developer ranking dashboard. All features simulate active states.</p>

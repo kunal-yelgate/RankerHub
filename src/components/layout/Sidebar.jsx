@@ -111,7 +111,6 @@ export const Sidebar = ({ isCollapsed, toggleCollapse }) => {
                 key={link.path}
                 to={link.path}
                 className="block relative"
-                {...(link.path === "/about" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               >
                 <motion.div
                   whileHover={{ x: 4 }}

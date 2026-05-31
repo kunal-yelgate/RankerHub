@@ -16,6 +16,8 @@ import Onboarding from "../pages/Onboarding";
 import NotFound from "../pages/NotFound";
 import Achievements from "../pages/Achievements";
 import About from "../pages/About";
+import Terms from "../pages/Terms";    
+import Privacy from "../pages/Privacy";
 import ComingSoonCard from "../components/ui/ComingSoonCard";
 import GlobalModals from "../components/ui/GlobalModals";
 import { Settings as SettingsIcon } from "lucide-react";
@@ -120,6 +122,10 @@ export const AppRoutes = () => {
 
         {/* Standalone About Us page */}
         <Route path="/about" element={<About />} />
+
+        {/* Standalone Legal pages */}
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         {/* Public Login page (standalone) - guarded from logged in users */}
         <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
