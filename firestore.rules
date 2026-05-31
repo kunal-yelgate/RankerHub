@@ -90,9 +90,15 @@ service cloud.firestore {
       // Let the owner create their own referrals index document
       allow create: if isOwner(uid);
 
-      // Allow either the owner to write, OR a referred user to atomically append their UID to 'usedBy' and increment totalEarned by 100
+      // Allow either the owner to write, OR a referred user to atomically append their UID to
+      // 'usedBy' and increment totalEarned by 100.
+      // The uniqueness guard (!(request.auth.uid in resource.data.usedBy)) ensures that the same
+      // caller cannot append their UID a second time. Without it, a user could submit
+      // ["user_A", "user_A"] and satisfy both the size-growth check and the last-element check,
+      // farming unlimited referral points against the same referrer.
       allow update: if isOwner(uid) || (
         isAuthenticated()
+        && !(request.auth.uid in resource.data.usedBy)
         && request.resource.data.usedBy.size() == resource.data.usedBy.size() + 1
         && request.resource.data.usedBy[resource.data.usedBy.size()] == request.auth.uid
         && request.resource.data.totalEarned == resource.data.totalEarned + 100
