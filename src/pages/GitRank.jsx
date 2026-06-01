@@ -23,6 +23,7 @@ export const GitRank = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState("");
   const [syncError, setSyncError] = useState("");
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   // Charts data state
   const [events, setEvents] = useState([]);
@@ -158,6 +159,35 @@ export const GitRank = () => {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  // Cooldown effect for sync throttling
+  useEffect(() => {
+    if (!userData?.lastSync) return;
+
+    const checkCooldown = () => {
+      const lastSyncTime = new Date(userData.lastSync).getTime();
+      const now = Date.now();
+      const cooldownMs = 5 * 60 * 1000; // 5 minutes
+      const elapsed = now - lastSyncTime;
+
+      if (elapsed < cooldownMs) {
+        setCooldownSeconds(Math.ceil((cooldownMs - elapsed) / 1000));
+      } else {
+        setCooldownSeconds(0);
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000);
+
+    return () => clearInterval(interval);
+  }, [userData?.lastSync]);
+
+  const formatCooldown = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
 
   // Filter leaderboard lists
@@ -419,11 +449,15 @@ export const GitRank = () => {
               <div className="w-full md:w-auto flex flex-col items-center md:items-end gap-2">
                 <GradientButton
                   onClick={handleSync}
-                  disabled={isSyncing}
+                  disabled={isSyncing || cooldownSeconds > 0}
                   className="w-full md:w-auto px-5 py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/10"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                  {isSyncing ? "Syncing GitHub..." : "Sync GitHub Data"}
+                  {isSyncing
+                    ? "Syncing GitHub..."
+                    : cooldownSeconds > 0
+                    ? `Retry in ${formatCooldown(cooldownSeconds)}`
+                    : "Sync GitHub Data"}
                 </GradientButton>
 
                 {userData?.lastSync && (
