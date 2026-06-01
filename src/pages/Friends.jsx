@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Activity, HeartHandshake, UserCheck, UserPlus, UsersRound } from "lucide-react";
 import SectionHeader from "../components/ui/SectionHeader";
 import Card from "../components/ui/Card";
 import DeveloperCard from "../components/friends/DeveloperCard";
+import Loader from "../components/ui/Loader";
+import { useAuth } from "../context/AuthContext";
 import {
-  getSocialGraph,
+  fetchDevelopers,
   hydrateConnections,
   toggleFollowStatus
 } from "../services/friendsService";
@@ -24,13 +26,39 @@ const getActiveTab = (pathname) => {
 
 export const Friends = () => {
   const location = useLocation();
-  const graph = useMemo(() => getSocialGraph(), []);
-  const [followingIds, setFollowingIds] = useState(graph.followingIds);
   const activeTab = getActiveTab(location.pathname);
+  const { currentUser } = useAuth();
+
+  const [developers, setDevelopers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [followingIds, setFollowingIds] = useState([]);
+  const [followerIds, setFollowerIds] = useState([]);
+
+  useEffect(() => {
+    const loadDevelopers = async () => {
+      try {
+        const fetchedDevs = await fetchDevelopers();
+        // Remove the current logged-in user from the list
+        const filteredDevs = fetchedDevs.filter(dev => dev.id !== currentUser?.uid);
+        setDevelopers(filteredDevs);
+        
+        // Mock a couple of followers for UI testing (remove once #105 backend logic is done)
+        if (filteredDevs.length > 2) {
+          setFollowerIds([filteredDevs[0].id, filteredDevs[1].id]);
+        }
+      } catch (error) {
+        console.error("Failed to load developers", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadDevelopers();
+  }, [currentUser]);
 
   const connections = useMemo(
-    () => hydrateConnections({ followingIds, followerIds: graph.followerIds }),
-    [followingIds, graph.followerIds]
+    () => hydrateConnections(developers, followingIds, followerIds),
+    [developers, followingIds, followerIds]
   );
 
   const activeDevelopers = connections[activeTab];
@@ -43,6 +71,14 @@ export const Friends = () => {
   const handleToggleFollow = (developerId) => {
     setFollowingIds((currentIds) => toggleFollowStatus(currentIds, developerId));
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
