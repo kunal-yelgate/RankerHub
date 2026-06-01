@@ -6,6 +6,7 @@ import { RateLimitProvider } from "./context/RateLimitContext";
 import AppRoutes from "./routes/AppRoutes";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import RateLimitBanner from "./components/ui/RateLimitBanner";
+import Preloader from "./components/ui/Preloader";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <AuthProvider>
           <RateLimitProvider>
             <HashRouter>
+              <Preloader />
               <RateLimitBanner />
               <AppRoutes />
             </HashRouter>
