@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Filter, Star, Trophy, RefreshCw, GitCommit, Calendar, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
-import { collection, query, where, onSnapshot, doc, runTransaction } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, runTransaction, orderBy, limit } from "firebase/firestore";
 import { useSearchParams } from "react-router-dom";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -43,7 +43,9 @@ export const GitRank = () => {
 
     const q = query(
       collection(db, "users"),
-      where("onboardingStatus", "==", "complete")
+      where("onboardingStatus", "==", "complete"),
+      orderBy("points.totalPoints", "desc"),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(
@@ -54,10 +56,7 @@ export const GitRank = () => {
           users.push(doc.data());
         });
 
-        // Sort by totalPoints descending
-        users.sort((a, b) => (b.points?.totalPoints || 0) - (a.points?.totalPoints || 0));
-
-        // Assign ranks
+        // Assign ranks (pre-sorted at database level)
         const ranked = users.map((u, i) => ({
           ...u,
           rank: i + 1
