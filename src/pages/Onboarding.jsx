@@ -162,6 +162,17 @@ export const Onboarding = () => {
       return;
     }
 
+    if (linkedinUrl.trim()) {
+      const normalizedLinkedin = linkedinUrl.trim().toLowerCase();
+      const validPrefixes = ["https://linkedin.com/in/", "https://www.linkedin.com/in/"];
+      const isValidLinkedin = validPrefixes.some((prefix) => normalizedLinkedin.startsWith(prefix));
+      if (!isValidLinkedin) {
+        setError("LinkedIn URL must start with https://linkedin.com/in/ or https://www.linkedin.com/in/");
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const activeUid = user.uid;
       const githubUsername = userData?.githubUsername || user.reloadUserInfo?.screenName || "";
