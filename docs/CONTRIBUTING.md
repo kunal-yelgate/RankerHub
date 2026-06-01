@@ -70,6 +70,75 @@ To get your own Firebase credentials for local development:
 
 ---
 
+## Local Firebase Emulator Setup
+
+Use the Firebase Emulator Suite when you want to test Auth and Firestore locally without writing to a live Firebase project or consuming cloud quota.
+
+### 1. Install the Firebase CLI
+
+Install the CLI globally or run it through `npx`:
+
+```bash
+npm install -g firebase-tools
+```
+
+You also need Java 11 or later because the Firestore emulator runs on the JVM.
+
+### 2. Prepare local environment values
+
+Copy `.env.example` as usual:
+
+```bash
+cp .env.example .env
+```
+
+Keep the normal `VITE_FIREBASE_*` web app values populated so the Firebase SDK can initialize, then enable the emulator switches:
+
+```bash
+VITE_USE_FIREBASE_EMULATORS=true
+VITE_FIREBASE_AUTH_EMULATOR_HOST=localhost
+VITE_FIREBASE_AUTH_EMULATOR_PORT=9099
+VITE_FIRESTORE_EMULATOR_HOST=localhost
+VITE_FIRESTORE_EMULATOR_PORT=8080
+```
+
+The local app reads these values in `src/lib/firebase.js` and connects Firebase Auth and Firestore to the emulator endpoints only when `VITE_USE_FIREBASE_EMULATORS=true`.
+
+### 3. Start Auth and Firestore emulators
+
+From the repository root, run:
+
+```bash
+firebase emulators:start --only auth,firestore
+```
+
+The default local services are:
+
+- Auth emulator: `http://localhost:9099`
+- Firestore emulator: `localhost:8080`
+- Emulator UI: `http://localhost:4000`
+
+If another process already uses one of these ports, change the port in your emulator configuration and mirror the change in `.env`.
+
+### 4. Run RankerHub against the emulators
+
+In a second terminal, start the Vite dev server:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:5173`. New test users and Firestore documents created while the emulator switch is enabled stay in the local Emulator Suite instead of the live Firebase project.
+
+### 5. Reset and troubleshoot local data
+
+- Stop the emulator process to clear in-memory data, or use the Emulator UI to inspect and delete Auth users and Firestore documents.
+- If sign-in still reaches the live Firebase project, confirm `VITE_USE_FIREBASE_EMULATORS=true` and restart `npm run dev`; Vite only reads `.env` at server startup.
+- If Firestore requests fail with permission errors, verify `firestore.rules` is loaded by `firebase.json` and restart the emulators.
+- Do not commit real Firebase credentials or emulator test data.
+
+---
+
 ## Git Workflow & Branching Conventions
 
 To keep the repository history clean, please follow these branching and commit message conventions:
