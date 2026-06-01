@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { Link } from "react-router-dom";
+import React, { useRef, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -24,6 +24,20 @@ import logo from "../assets/logo.png";
 
 export const Home = () => {
   const featureRailRef = useRef(null);
+  const location = useLocation(); 
+
+  useEffect(() => {
+    if (location.hash === "#features") {
+      setTimeout(() => {
+        const element = document.getElementById("features");
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    } else if (!location.hash) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [location]);
 
   const scrollFeatures = (direction) => {
     const rail = featureRailRef.current;

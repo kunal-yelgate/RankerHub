@@ -1,0 +1,125 @@
+name: Triage & Automation
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  triage:
+    name: Run Triage and Automation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto Triage
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const isPR = !!context.payload.pull_request;
+            const item = isPR ? context.payload.pull_request : context.payload.issue;
+            const number = item.number;
+            const title = item.title || "";
+            const body = item.body || "";
+            const author = item.user.login;
+
+            console.log(`Processing ${isPR ? 'PR' : 'Issue'} #${number} by ${author}`);
+
+            // 1. Determine labels to apply
+            // Apply all GSSoC and NSoC related labels
+            const labelsToApply = new Set(['gssoc26', "NSoC'26", 'gssoc', 'nsoc']);
+
+            // Add status labels
+            if (isPR) {
+              labelsToApply.add('pending-review');
+            } else {
+              labelsToApply.add('needs-review');
+            }
+
+            // Keyword analysis for auto-labeling (bug, enhancement, documentation, frontend, backend)
+            const textToAnalyze = `${title} ${body}`.toLowerCase();
+
+            const keywordMap = {
+              'bug': ['bug', 'error', 'fail', 'broken', 'crash', 'issue', 'fix', 'incorrect'],
+              'enhancement': ['feature', 'enhance', 'new', 'request', 'improve', 'add', 'create'],
+              'documentation': ['documentation', 'doc', 'docs', 'readme', 'comment', 'guide', 'wiki'],
+              'frontend': ['frontend', 'css', 'html', 'style', 'ui', 'ux', 'react', 'page', 'component', 'tailwind', 'font', 'color', 'view', 'assets', 'images'],
+              'backend': ['backend', 'firebase', 'firestore', 'db', 'database', 'auth', 'api', 'server', 'cloud', 'functions']
+            };
+
+            for (const [label, keywords] of Object.entries(keywordMap)) {
+              if (keywords.some(kw => textToAnalyze.includes(kw))) {
+                labelsToApply.add(label);
+              }
+            }
+
+            const labelList = Array.from(labelsToApply);
+            console.log(`Applying labels: ${labelList.join(', ')}`);
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                labels: labelList
+              });
+            } catch (err) {
+              console.log(`Failed to add labels: ${err.message}`);
+            }
+
+            // 2. Issue specific actions (Welcome & Triage Comment)
+            if (!isPR) {
+              const commentBody = `### Thank you for opening this issue, @${author}! 🚀\n\n` +
+                `A maintainer (@indresh404) will review this and assign it to you if the issue is valid. ` +
+                `Please wait for assignment before you start working on it!\n\n` +
+                `Happy contributing! 🌟`;
+
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  body: commentBody
+                });
+                console.log(`Successfully commented on issue #${number}`);
+              } catch (err) {
+                console.log(`Failed to create comment: ${err.message}`);
+              }
+            }
+
+            // 3. PR specific actions (Auto Assignment & Review Request)
+            if (isPR) {
+              // Assign the author of the PR
+              try {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  assignees: [author]
+                });
+                console.log(`Assigned PR to author: ${author}`);
+              } catch (err) {
+                console.log(`Failed to assign author: ${err.message}`);
+              }
+
+              // Request review from indresh404 (if the author is not indresh404)
+              if (author !== 'indresh404') {
+                try {
+                  await github.rest.pulls.requestReviewers({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: number,
+                    reviewers: ['indresh404']
+                  });
+                  console.log(`Requested review from indresh404`);
+                } catch (err) {
+                  console.log(`Failed to request review: ${err.message}`);
+                }
+              } else {
+                console.log("PR author is indresh404, skipping review request.");
+              }
+            }

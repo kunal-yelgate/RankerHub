@@ -22,6 +22,12 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOnboarding, setIsOnboarding] = useState(false);
+  // GitHub OAuth access token kept in React state only -- never written to
+  // sessionStorage or localStorage. Storing it in Web Storage exposes it to
+  // any JavaScript running on the page (XSS). Keeping it in memory means it
+  // is lost on page refresh, but the token is only needed once after login
+  // to call fetchGitHubStats, so this trade-off is acceptable.
+  const [ghAccessToken, setGhAccessToken] = useState(null);
 
   // Listen to Auth State Changed
   useEffect(() => {
@@ -71,37 +77,26 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Securely login with GitHub and immediately provision skeletal incomplete user if not exists
-  const login = async () => {
-    // Set loading true so route guards show loading screen during the popup flow.
-    // IMPORTANT: We do NOT set loading=false on success — the onSnapshot listener
-    // in useEffect is the sole source of truth for resolving loading+isOnboarding.
-    // This prevents a race condition where setLoading(false) in finally{}
-    // would resolve before onSnapshot detects the new skeletal document,
-    // causing ProtectedRoute to see (loading=false, isOnboarding=false) and
-    // incorrectly allow through to dashboard.
+  // Securely login with GitHub and conditionally request private repo scope
+  const login = async (requestRepoScope = false) => {
     setLoading(true);
     try {
-      const result = await signInWithGitHub();
-      const authUser = result.user;
-      const accessToken = result.accessToken;
+      // Pass the flag to firebase service
+      const { user: authUser, accessToken, result } = await signInWithGitHub(requestRepoScope);
 
-      // Extract GitHub details securely using getAdditionalUserInfo
+      // Extract GitHub details securely
       const additionalInfo = getAdditionalUserInfo(result);
       const githubUsername = additionalInfo?.username || authUser.displayName || "";
       const githubId = additionalInfo?.profile?.id || null;
       const avatar = additionalInfo?.profile?.avatar_url || authUser.photoURL || "";
 
-      // Store GitHub accessToken in sessionStorage securely (non-persistent across tabs for security)
-      sessionStorage.setItem(`gh_token_${authUser.uid}`, accessToken);
+      // Keep the token in React state only -- do not write to Web Storage.
+      setGhAccessToken(accessToken);
 
       const userDocRef = doc(db, "users", authUser.uid);
       const docSnap = await getDoc(userDocRef);
 
       if (!docSnap.exists()) {
-
-        
-        // Provision skeletal record with "incomplete" status so onboarding lock is active
         const skeletalUser = {
           uid: authUser.uid,
           githubUsername,
@@ -110,34 +105,31 @@ export const AuthProvider = ({ children }) => {
           email: authUser.email || "",
           avatar,
           onboardingStatus: "incomplete",
+          privateRepoSyncEnabled: requestRepoScope,
           city: "",
           streak: 0,
           lastLogin: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           points: {
-            gitRankPoints: 0, // calculated from actual repos/followers/stars on submission
+            gitRankPoints: 0, 
             codingVersePoints: 0,
             streakPoints: 0,
             referralPoints: 0,
             totalPoints: 0
           }
         };
-
-        // Save initial skeletal document securely
-        // Once this write completes, the onSnapshot listener in useEffect will
-        // fire and set isOnboarding=true + loading=false
         await setDoc(userDocRef, skeletalUser);
       } else {
-        // If user already exists, update their lastLogin timestamp securely
         await setDoc(userDocRef, {
-          lastLogin: new Date().toISOString()
+          lastLogin: new Date().toISOString(),
+          ...(requestRepoScope && { privateRepoSyncEnabled: true })
         }, { merge: true });
       }
 
       return authUser;
     } catch (error) {
       console.error("Login service failure:", error);
-      setLoading(false); // Only set loading false on error so UI can show the error
+      setLoading(false);
       throw error;
     }
   };
@@ -146,13 +138,11 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     try {
-      if (user) {
-        sessionStorage.removeItem(`gh_token_${user.uid}`);
-      }
       await signOutUser();
       setUser(null);
       setUserData(null);
       setIsOnboarding(false);
+      setGhAccessToken(null);
     } catch (error) {
       console.error("Logout failure:", error);
     } finally {
@@ -160,9 +150,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Securely fetches GitHub stats on the client once using the transient OAuth token
+  // Fetches GitHub stats once after login using the in-memory OAuth token.
+  // The token is no longer read from sessionStorage -- it comes from the
+  // ghAccessToken state variable which is populated on login and cleared on
+  // logout. This prevents any JavaScript on the page from reading the token
+  // via sessionStorage.getItem().
   const fetchGitHubStats = async (uid, username) => {
-    const token = sessionStorage.getItem(`gh_token_${uid}`);
+    const token = ghAccessToken;
     const headers = token ? { Authorization: `token ${token}` } : {};
 
     try {

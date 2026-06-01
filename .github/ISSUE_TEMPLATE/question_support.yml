@@ -8,28 +8,10 @@ body:
       value: |
         Need help? Please ask! Remember to search past issues and GitHub Discussions first.
   - type: textarea
-    id: question
+    id: description
     attributes:
-      label: "What is your question?"
+      label: "Description"
       description: "Ask your question clearly and provide context."
-      placeholder: "e.g., How do I reset my local Firebase database seeds?"
+      placeholder: "Describe your question or issue here..."
     validations:
       required: true
-  - type: textarea
-    id: context
-    attributes:
-      label: "Context / What have you tried?"
-      description: "Describe what you are trying to achieve and any troubleshooting steps you've already taken."
-      placeholder: "e.g., I tried running npm run db-seed, but it returns a Firestore authentication error..."
-    validations:
-      required: true
-  - type: checkboxes
-    id: checklists
-    attributes:
-      label: "Before submitting"
-      description: "Please check all of the following requirements."
-      options:
-        - label: "I have read the [Contributing Guidelines](https://github.com/indresh404/RankerHub/blob/main/docs/CONTRIBUTING.md)"
-          required: true
-        - label: "I have checked for duplicate questions."
-          required: true

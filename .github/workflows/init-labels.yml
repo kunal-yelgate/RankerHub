@@ -31,6 +31,8 @@ jobs:
               { name: 'help wanted', color: '008672', description: 'Extra attention is needed' },
               { name: 'gssoc26', color: 'ff9900', description: 'GirlScript Summer of Code 2026' },
               { name: "NSoC'26", color: 'ff007f', description: 'NSoC 2026' },
+              { name: 'gssoc', color: 'ff9900', description: 'GirlScript Summer of Code' },
+              { name: 'nsoc', color: 'ff007f', description: 'NSoC' },
               { name: 'pending-review', color: 'fbca04', description: 'PR is pending review' },
               { name: 'needs-review', color: 'fbca04', description: 'Issue needs review' },
               { name: 'ready-to-merge', color: '0e8a16', description: 'All checks passed, ready to be merged' }

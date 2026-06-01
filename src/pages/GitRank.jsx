@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Filter, Star, Trophy, RefreshCw, GitCommit, Calendar, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
-import { collection, query, where, onSnapshot, doc, runTransaction, orderBy, limit } from "firebase/firestore";
+import { collection, query, doc, orderBy, limit, startAfter, onSnapshot, getDocs, runTransaction } from "firebase/firestore";
 import { useSearchParams } from "react-router-dom";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,11 @@ export const GitRank = () => {
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedLanguage, setSelectedLanguage] = useState("All");
+  
+  // Pagination States
+  const [lastVisible, setLastVisible] = useState(null); 
+  const [hasMore, setHasMore] = useState(true); 
+  const [loadingMore, setLoadingMore] = useState(false); 
 
   // Real-time leaderboard state
   const [usersList, setUsersList] = useState([]);
@@ -23,6 +28,7 @@ export const GitRank = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState("");
   const [syncError, setSyncError] = useState("");
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   // Charts data state
   const [events, setEvents] = useState([]);
@@ -31,9 +37,11 @@ export const GitRank = () => {
 
   const languages = ["All", "TypeScript", "Rust", "Go", "Python", "Kotlin", "Ruby", "JavaScript"];
 
-  // 1. Real-time Leaderboard Listener
+  // 1. Real-time Leaderboard Listener (Initial 50 Users)
   useEffect(() => {
-    // Only listen if user is logged in (due to read rules requiring authentication)
+// eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadingUsers(true);
+
     if (!user) {
       const timer = setTimeout(() => {
         setLoadingUsers(false);
@@ -43,7 +51,6 @@ export const GitRank = () => {
 
     const q = query(
       collection(db, "users"),
-      where("onboardingStatus", "==", "complete"),
       orderBy("points.totalPoints", "desc"),
       limit(50)
     );
@@ -63,6 +70,10 @@ export const GitRank = () => {
         }));
 
         setUsersList(ranked);
+        
+        // Setup pagination cursors
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === 50); 
         setLoadingUsers(false);
       },
       (error) => {
@@ -72,7 +83,50 @@ export const GitRank = () => {
     );
 
     return () => unsubscribe();
-  }, [user]);
+  }, []);
+
+  // Pagination Function (Fetch next 50)
+  const loadMoreUsers = async () => {
+    if (!lastVisible || !hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const nextQuery = query(
+        collection(db, "users"),
+        orderBy("points.totalPoints", "desc"),
+        startAfter(lastVisible),
+        limit(50)
+      );
+
+      const snapshot = await getDocs(nextQuery);
+
+      if (snapshot.empty) {
+        setHasMore(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      const newUsers = [];
+      snapshot.forEach((doc) => {
+        newUsers.push(doc.data());
+      });
+
+      setUsersList((prevUsers) => {
+        const combinedUsers = [...prevUsers, ...newUsers];
+        return combinedUsers.map((u, i) => ({
+          ...u,
+          rank: i + 1
+        }));
+      });
+
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+      setHasMore(snapshot.docs.length === 50);
+    } catch (error) {
+      console.error("Error fetching more users:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // 2. Fetch GitHub Events/Repos for Charts
   useEffect(() => {
@@ -157,6 +211,35 @@ export const GitRank = () => {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  // Cooldown effect for sync throttling
+  useEffect(() => {
+    if (!userData?.lastSync) return;
+
+    const checkCooldown = () => {
+      const lastSyncTime = new Date(userData.lastSync).getTime();
+      const now = Date.now();
+      const cooldownMs = 5 * 60 * 1000; // 5 minutes
+      const elapsed = now - lastSyncTime;
+
+      if (elapsed < cooldownMs) {
+        setCooldownSeconds(Math.ceil((cooldownMs - elapsed) / 1000));
+      } else {
+        setCooldownSeconds(0);
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000);
+
+    return () => clearInterval(interval);
+  }, [userData?.lastSync]);
+
+  const formatCooldown = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
 
   // Filter leaderboard lists
@@ -418,11 +501,15 @@ export const GitRank = () => {
               <div className="w-full md:w-auto flex flex-col items-center md:items-end gap-2">
                 <GradientButton
                   onClick={handleSync}
-                  disabled={isSyncing}
+                  disabled={isSyncing || cooldownSeconds > 0}
                   className="w-full md:w-auto px-5 py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/10"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                  {isSyncing ? "Syncing GitHub..." : "Sync GitHub Data"}
+                  {isSyncing
+                    ? "Syncing GitHub..."
+                    : cooldownSeconds > 0
+                    ? `Retry in ${formatCooldown(cooldownSeconds)}`
+                    : "Sync GitHub Data"}
                 </GradientButton>
 
                 {userData?.lastSync && (
@@ -900,6 +987,34 @@ export const GitRank = () => {
           )}
         </div>
       </Card>
+
+      {/*  PAGINATION CONTROLS ADDED HERE  */}
+      {hasMore && (
+        <div className="flex justify-center w-full mt-8 mb-4">
+          <button
+            onClick={loadMoreUsers}
+            disabled={loadingMore}
+            className="px-8 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-violet-500/30 flex items-center gap-2"
+          >
+            {loadingMore ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More Developers"
+            )}
+          </button>
+        </div>
+      )}
+      
+      {!hasMore && usersList.length > 0 && (
+        <div className="text-center text-slate-500 dark:text-slate-400 mt-6 pb-4 text-sm font-medium">
+          You've reached the end of the leaderboard! 🏆
+        </div>
+      )}
+      {/* 🚀 👆 YAHAN TAK 👆 🚀 */}
+
     </div>
   );
 };
