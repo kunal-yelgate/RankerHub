@@ -1,7 +1,7 @@
 ﻿# RankerHub Architecture Documentation
 
-**Version:** 1.0  
-**Last Updated:** May 2026  
+**Version:** 1.0
+**Last Updated:** May 2026
 **Status:** Production Ready
 
 ## Table of Contents
@@ -260,23 +260,22 @@ graph TD
     Theme -->|children| Auth["AuthProvider"]
     Auth -->|children| Rate["RateLimitProvider"]
     Rate -->|children| Router["HashRouter"]
-    
     Router -->|contains| Routes["Routes Component"]
     Routes -->|public routes| PL["PublicLayout"]
     Routes -->|protected routes| PR["ProtectedRoute"]
     Routes -->|guest only| GR["GuestRoute"]
     Routes -->|onboarding| OR["OnboardingRoute"]
-    
+
     PL -->|outlets| PB["Page Body"]
     PL -->|has| PNav["PublicNavbar"]
     PL -->|has| PFoot["PublicFooter"]
-    
+
     PR -->|wraps| DL["DashboardLayout"]
     DL -->|has| Navbar["Navbar"]
     DL -->|has| Sidebar["Sidebar"]
     DL -->|has| MS["MobileSidebar"]
     DL -->|outlets| Pages["Page Components"]
-    
+
     Pages -->|renders| Dashboard["Dashboard.jsx"]
     Pages -->|renders| Friends["Friends.jsx"]
     Pages -->|renders| Profile["Profile.jsx"]
@@ -465,19 +464,18 @@ graph LR
 \\\mermaid
 graph TD
     AppRoutes["AppRoutes Component"]
-    
     AppRoutes -->|PublicLayout| PL["Public Pages"]
     PL -->|/| Home["Home"]
     PL -->|/gitrank| GitRankPub["GitRank Info"]
     PL -->|/rankher| RankHer["RankHer Info"]
     PL -->|/codingverse| CodingVerse["CodingVerse Info"]
     PL -->|/codingowl| CodingOwl["CodingOwl Info"]
-    
+
     AppRoutes -->|GuestRoute| Guest["Guest Only"]
     Guest -->|/login| Login["Login Page"]
-    
+
     AppRoutes -->|OnboardingRoute| Onboarding["Onboarding Page"]
-    
+
     AppRoutes -->|ProtectedRoute| DL["DashboardLayout"]
     DL -->|/dashboard| Dashboard["Dashboard"]
     DL -->|/dashboard/*| SubPages["Sub-pages"]
@@ -489,12 +487,12 @@ graph TD
     SubPages -->|/friends| Friends["Friends"]
     SubPages -->|/profile| Profile["Profile"]
     SubPages -->|/settings| Settings["Settings"]
-    
+
     AppRoutes -->|Standalone| Legal["Legal Pages"]
     Legal -->|/about| About["About"]
     Legal -->|/terms| Terms["Terms"]
     Legal -->|/privacy| Privacy["Privacy"]
-    
+
     AppRoutes -->|Catch-all| NotFound["404 Page"]
 \\\
 
@@ -538,7 +536,7 @@ sequenceDiagram
     User->>Browser: Click navigation link
     Browser->>React: Update URL hash
     React->>Guard: Check route access
-    
+
     alt User authenticated & onboarded
         Guard->>Page: Render dashboard page
         Page-->>Browser: Display content
@@ -572,10 +570,10 @@ sequenceDiagram
     GitHub-->>Firebase: Authorization code
     Firebase->>Firebase: Exchange for token
     Firebase-->>Browser: User object + access token
-    
+
     Browser->>Firestore: Check if user exists
     Firestore-->>Browser: User profile (or not found)
-    
+
     alt First time login
         Browser->>Firestore: Create skeletal user doc
         Firestore->>Firestore: Save basic info
@@ -597,15 +595,15 @@ sequenceDiagram
   uid: "firebase-uid",
   githubUsername: "developer-handle",
   githubId: 12345678,
-  email: "developer@example.com",
+  email: "<developer@example.com>",
   name: "Developer Name",
-  avatar: "https://avatars.githubusercontent.com/...",
-  
+  avatar: "<https://avatars.githubusercontent.com/...>",
+
   // Status
   onboardingStatus: "complete" | "incomplete",
   lastLogin: "2026-05-31T23:41:48Z",
   createdAt: "2026-05-31T23:41:48Z",
-  
+
   // GitHub Stats
   commits: 1250,
   prs: 150,
@@ -614,7 +612,7 @@ sequenceDiagram
   stars: 5000,
   followers: 500,
   primaryLanguage: "JavaScript",
-  
+
   // Points System
   points: {
     gitRankPoints: 4250,        // (commits*2) + (prs*5) + (reviews*10)
@@ -623,13 +621,13 @@ sequenceDiagram
     referralPoints: 0,
     totalPoints: 4250
   },
-  
+
   // Profile Data
   city: "San Francisco, CA",
   bio: "Open source enthusiast",
-  website: "https://example.com",
+  website: "<https://example.com>",
   streak: 42,
-  
+
   // Privacy & Settings
   profileVisibility: "public" | "private",
   privateRepoSyncEnabled: false,
@@ -666,7 +664,9 @@ VITE_FIREBASE_MEASUREMENT_ID (optional)
 
 #### 1. **Authentication (Firebase Auth)**
 - GitHub OAuth provider
-- Scopes: \ead:user\, \user:email\, optional \epo\
+- Scopes: \
+ead:user\, \user:email\, optional \
+epo\
 - Conditional repo scope for private repository sync
 
 #### 2. **Firestore Database**
@@ -782,20 +782,19 @@ graph TD
     B -->|fetches from| C["Firestore User Doc"]
     C -->|triggers| D["Real-time Listener"]
     D -->|updates| E["userData state"]
-    
     E -->|used by| F["Dashboard Page"]
     F -->|renders| G["StatsCards"]
     G -->|displays| H["Points, Rank, Followers"]
-    
+
     F -->|renders| I["StreakCard"]
     I -->|displays| J["Current Streak"]
-    
+
     F -->|renders| K["ActivityFeed"]
     K -->|displays| L["Recent Activity"]
-    
+
     E -->|also used by| M["Profile Page"]
     M -->|displays| N["User Profile Info"]
-    
+
     E -->|also used by| O["Friends Page"]
     O -->|displays| P["Friend List"]
 \\\
@@ -888,7 +887,7 @@ import { myApiFunction } from '../services/myService';
 const MyComponent = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     setLoading(true);
     myApiFunction()
@@ -1012,6 +1011,6 @@ pm run lint\
 
 ---
 
-**Last Updated**: May 2026  
-**Maintainer**: RankerHub Team  
+**Last Updated**: May 2026
+**Maintainer**: RankerHub Team
 **For Questions**: See CONTRIBUTING.md or open an issue
