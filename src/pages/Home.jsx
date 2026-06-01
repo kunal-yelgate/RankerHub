@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -28,6 +28,64 @@ import Card from "../components/ui/Card";
 import logo from "../assets/logo.png";
 import GlowRingLogo from "../components/ui/GlowRingLogo";
 
+const AnimatedNumber = ({ value, suffix = "", decimals = 0, duration = 2000 }) => {
+  const [count, setCount] = useState(0);
+  const elementRef = useRef(null);
+  const [hasStarted, setHasStarted] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasStarted(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    let startTime = null;
+    const endValue = parseFloat(value);
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percentage = Math.min(progress / duration, 1);
+      
+      // Easing function (easeOutQuad)
+      const easeProgress = percentage * (2 - percentage);
+      
+      const currentValue = easeProgress * endValue;
+      setCount(currentValue);
+
+      if (percentage < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setCount(endValue);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [hasStarted, value, duration]);
+
+  // Format count
+  const formatted = count.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  return <span ref={elementRef}>{formatted}{suffix}</span>;
+};
 
 export const Home = () => {
   const location = useLocation();
@@ -121,10 +179,10 @@ export const Home = () => {
   ];
 
   const valueProps = [
-    { label: "Tracked Developers", value: "85,420+", icon: Users },
-    { label: "Challenges Solved", value: "1.2M+", icon: Target },
-    { label: "Pull Requests Analyzed", value: "3.4M+", icon: Zap },
-    { label: "Global Badges Issued", value: "24,000+", icon: Award }
+    { label: "Tracked Developers", numericValue: 85420, suffix: "+", decimals: 0, icon: Users },
+    { label: "Challenges Solved", numericValue: 1.2, suffix: "M+", decimals: 1, icon: Target },
+    { label: "Pull Requests Analyzed", numericValue: 3.4, suffix: "M+", decimals: 1, icon: Zap },
+    { label: "Global Badges Issued", numericValue: 24000, suffix: "+", decimals: 0, icon: Award }
   ];
 
   return (
@@ -218,7 +276,11 @@ export const Home = () => {
                   <Icon className="w-6 h-6" />
                 </div>
                 <span className="block text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white">
-                  {prop.value}
+                  <AnimatedNumber
+                    value={prop.numericValue}
+                    suffix={prop.suffix}
+                    decimals={prop.decimals}
+                  />
                 </span>
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {prop.label}
