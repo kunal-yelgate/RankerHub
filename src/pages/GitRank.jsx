@@ -49,11 +49,11 @@ export const GitRank = () => {
       return () => clearTimeout(timer);
     }
 
-    // Combined query: onboarding check (from your branch) + limit 50 (from main)
+    // Switched to gitRankPoints for strict Git achievement rating
     const q = query(
       collection(db, "users"),
       where("onboardingStatus", "==", "complete"),
-      orderBy("points.totalPoints", "desc"),
+      orderBy("points.gitRankPoints", "desc"),
       limit(50) 
     );
 
@@ -86,6 +86,7 @@ export const GitRank = () => {
 
     return () => unsubscribe();
   }, [user]);
+
   // Pagination Function (Fetch next 50)
   const loadMoreUsers = async () => {
     if (!lastVisible || !hasMore || loadingMore) return;
@@ -94,7 +95,8 @@ export const GitRank = () => {
     try {
       const nextQuery = query(
         collection(db, "users"),
-        orderBy("points.totalPoints", "desc"),
+        where("onboardingStatus", "==", "complete"),      
+        orderBy("points.gitRankPoints", "desc"),
         startAfter(lastVisible),
         limit(50)
       );
@@ -826,9 +828,9 @@ export const GitRank = () => {
                 <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-800" />
                 <div>
                   <span className="block font-black text-violet-600 dark:text-violet-400 leading-none">
-                    {u.points?.totalPoints?.toLocaleString() || 0}
+                    {u.points?.gitRankPoints?.toLocaleString() || 0}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-1 block">Points</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-1 block">Git Points</span>
                 </div>
               </div>
             </Card>
@@ -904,11 +906,10 @@ export const GitRank = () => {
                   <th className="py-3 px-4">Rank</th>
                   <th className="py-3 px-4">Developer</th>
                   <th className="py-3 px-4">Focus Language</th>
-                  <th className="py-3 px-4 text-center">Streak</th>
                   <th className="py-3 px-4 text-center">Commits</th>
                   <th className="py-3 px-4 text-center">PRs</th>
                   <th className="py-3 px-4 text-center">Reviews</th>
-                  <th className="py-3 px-4 text-right">XP Points</th>
+                  <th className="py-3 px-4 text-right">Git Points</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-sm">
@@ -945,11 +946,6 @@ export const GitRank = () => {
                         </span>
                       </td>
 
-                      {/* Streak flame cell */}
-                      <td className="py-4 px-4 text-center font-bold text-orange-600 dark:text-orange-400 whitespace-nowrap">
-                        🔥 {u.streak ?? 0} days
-                      </td>
-
                       {/* Commits count cell */}
                       <td className="py-4 px-4 text-center font-bold text-slate-800 dark:text-slate-200">
                         {u.githubStats?.commits || 0}
@@ -965,15 +961,15 @@ export const GitRank = () => {
                         {u.githubStats?.reviews || 0}
                       </td>
 
-                      {/* Points cell */}
+                      {/* Points cell (Now shows GitRank Points only) */}
                       <td className="py-4 px-4 text-right font-black text-slate-900 dark:text-white">
-                        {u.points?.totalPoints?.toLocaleString() || 0}
+                        {u.points?.gitRankPoints?.toLocaleString() || 0}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="py-12 text-center text-slate-400 dark:text-slate-500">
+                    <td colSpan="7" className="py-12 text-center text-slate-400 dark:text-slate-500">
                       <p className="text-sm font-bold">No results found</p>
                       <p className="text-xs mt-1">
                         Try adjusting your search criteria or filtering by a different language
@@ -987,7 +983,7 @@ export const GitRank = () => {
         </div>
       </Card>
 
-      {/*  PAGINATION CONTROLS ADDED HERE  */}
+      {/* PAGINATION CONTROLS ADDED HERE  */}
       {hasMore && (
         <div className="flex justify-center w-full mt-8 mb-4">
           <button
@@ -1012,7 +1008,6 @@ export const GitRank = () => {
           You've reached the end of the leaderboard! 🏆
         </div>
       )}
-      {/* 🚀 👆 YAHAN TAK 👆 🚀 */}
 
     </div>
   );
