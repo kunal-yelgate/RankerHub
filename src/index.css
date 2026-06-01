@@ -217,3 +217,573 @@
   z-index: 2;
 }
 
+/* ==========================================================================
+   3D Team Card — DepthFold-faithful implementation
+   Card tilts on hover → z-translated children visually pop out at depth
+   ========================================================================== */
+
+/* 1. Perspective wrapper */
+.team-card-3d-wrap {
+  perspective: 1000px;
+  perspective-origin: 50% 50%;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 28px 50px rgba(0, 20, 60, 0.45));
+}
+
+/* 2. Card: preserve-3d so every child's translateZ is visible when card tilts */
+.team-card-3d {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.55s ease;
+  background: linear-gradient(160deg, #0d1117 0%, #111827 55%, #1e1b4b 100%) !important;
+  box-shadow:
+    rgba(0, 10, 40, 0) 40px 50px 25px -40px,
+    rgba(0, 10, 40, 0.3) 0 25px 25px -5px;
+}
+
+/* 3. Tilt on hover — this is the key that makes ALL z-depth visible */
+.team-card-3d-wrap:hover .team-card-3d {
+  transform: rotate3d(1, 1, 0, 24deg);
+  box-shadow:
+    rgba(0, 10, 40, 0.5) 28px 48px 28px -38px,
+    rgba(99, 102, 241, 0.15) 0 0 60px -10px,
+    rgba(0, 10, 40, 0.2) 0 25px 35px 0;
+}
+
+/* 4. Glass highlight panel — lifted 25px off the card face */
+.team-card-glass {
+  position: absolute;
+  inset: 8px;
+  border-radius: 18px;
+  border-top-right-radius: 100%;
+  background: linear-gradient(0deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.22) 100%);
+  transform: translate3d(0, 0, 25px);
+  border-left: 1px solid rgba(255, 255, 255, 0.65);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.5s ease-in-out;
+  pointer-events: none;
+}
+
+/* 5. Avatar -- highest z-layer, pops forward on hover */
+.team-card-3d-avatar {
+  transform: translate3d(0, 0, 50px);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(99, 102, 241, 0.2);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.55s ease;
+}
+
+.team-card-3d-wrap:hover .team-card-3d-avatar {
+  transform: translate3d(0, -10px, 100px) scale(1.06);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.6),
+    0 0 35px rgba(99, 102, 241, 0.5);
+}
+
+/* 6. Content block -- sits above glass */
+.team-card-3d-content {
+  transform: translate3d(0, 0, 35px);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 2;
+  width: 100%;
+}
+
+.team-card-3d-wrap:hover .team-card-3d-content {
+  transform: translate3d(0, -10px, 55px);
+}
+
+/* 7. Social row -- plain flex row (no transform-style, keeps flexbox reliable) */
+.team-card-social-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+
+
+/* Simple white circle buttons - fly forward when card tilts (DepthFold pattern) */
+.team-card-social-btn {
+  width: 34px;
+  aspect-ratio: 1;
+  padding: 7px;
+  background: #ffffff;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  color: #4338ca;
+  text-decoration: none;
+  box-shadow: rgba(0, 10, 40, 0.4) 0 8px 8px -5px;
+  transition:
+    transform 0.3s ease-in-out,
+    box-shadow 0.3s ease-in-out,
+    background 0.2s,
+    color 0.2s;
+}
+
+.team-card-social-btn:nth-child(1) { transition-delay: 0.04s; }
+.team-card-social-btn:nth-child(2) { transition-delay: 0.08s; }
+.team-card-social-btn:nth-child(3) { transition-delay: 0.12s; }
+.team-card-social-btn:nth-child(4) { transition-delay: 0.16s; }
+
+/* On card hover: buttons shoot out in Z -- visible because card is tilted */
+.team-card-3d-wrap:hover .team-card-social-btn {
+  transform: translate3d(0, -10px, 60px);
+  box-shadow: rgba(0, 10, 40, 0.22) -5px 20px 14px 0;
+}
+
+.team-card-social-btn:hover {
+  background: #1e1b4b;
+  color: #a5b4fc;
+}
+
+.team-card-social-btn:active {
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.team-card-social-btn--owner {
+  color: #6d28d9;
+}
+
+/* ==========================================================================
+   Swiper Slider & Frosted Glass Card Styles
+   ========================================================================== */
+
+/* Outer wrapper for each card to host the colorful gradient backglow */
+.frosted-gradient-wrapper {
+  position: relative;
+  height: 100%;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Glass card overlay */
+.frosted-glass-card {
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 10px 30px -10px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.7);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 24px;
+  height: 100%;
+  width: 100%;
+}
+
+.dark .frosted-glass-card {
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.frosted-glass-card:hover {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(124, 58, 237, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 
+    0 20px 40px -10px rgba(124, 58, 237, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.dark .frosted-glass-card:hover {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(124, 58, 237, 0.25);
+  box-shadow: 
+    0 30px 60px -20px rgba(0, 0, 0, 0.6),
+    0 0 30px -5px rgba(124, 58, 237, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Swiper styling overrides */
+.swiper-container-features {
+  width: 100%;
+  padding: 10px 10px 60px !important; /* Extra bottom padding for pagination dots */
+  overflow: hidden !important;
+}
+
+.swiper-slide {
+  height: auto !important; /* Stretch slides to equal height */
+  display: flex;
+}
+
+/* Apple style dynamic island pagination bullets */
+.swiper-pagination-bullets {
+  bottom: 10px !important;
+}
+
+.swiper-pagination-bullet {
+  width: 8px !important;
+  height: 8px !important;
+  background: rgba(124, 58, 237, 0.3) !important;
+  opacity: 1 !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border-radius: 99px !important;
+}
+
+.swiper-pagination-bullet-active {
+  width: 24px !important;
+  background: #7c3aed !important;
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+}
+
+.dark .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .swiper-pagination-bullet-active {
+  background: #a78bfa !important;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.4);
+}
+
+/* ==========================================================================
+   Apple Liquid Glass Navbar Styles
+   ========================================================================== */
+
+:root {
+  /* Echtes Liquid Glass - Light Mode */
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: rgba(0, 0, 0, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.85); /* Obere Lichtkante */
+  --glass-caustic: rgba(255, 255, 255, 0.45);   /* Untere Lichtbrechung */
+  --reflection-start: rgba(255, 255, 255, 0.6); /* Der Nässe-Effekt */
+  --reflection-end: rgba(255, 255, 255, 0.0);
+  --glare-color: rgba(255, 255, 255, 0.5);
+  
+  /* Slider Pill & Icons */
+  --pill-bg: rgba(255, 255, 255, 0.7);
+  --pill-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 1px rgba(255,255,255,0.8);
+  --icon-color: rgba(15, 23, 42, 0.65);
+  --icon-active: rgba(15, 23, 42, 0.95);
+  --divider: rgba(15, 23, 42, 0.15);
+}
+
+.dark {
+  /* Echtes Liquid Glass - Dark Mode */
+  --glass-bg: rgba(15, 23, 42, 0.35);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: rgba(0, 0, 0, 0.5);
+  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-caustic: rgba(255, 255, 255, 0.04);
+  --reflection-start: rgba(255, 255, 255, 0.12);
+  --reflection-end: rgba(255, 255, 255, 0.0);
+  --glare-color: rgba(255, 255, 255, 0.12);
+  
+  /* Slider Pill & Icons */
+  --pill-bg: rgba(30, 41, 59, 0.75);
+  --pill-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.15);
+  --icon-color: rgba(226, 232, 240, 0.6);
+  --icon-active: #ffffff;
+  --divider: rgba(255, 255, 255, 0.12);
+}
+
+/* Floating Wrapper for centering */
+.liquid-nav-container {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: auto;
+  max-width: 95vw;
+  transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+/* Base Liquid Glass Gehäuse */
+.liquid-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  border-radius: 99px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: visible;
+  
+  /* Deep blur for premium iOS/macOS feel */
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
+  
+  /* 3D Multi-Layer Volumetric Drop Shadows & Insets */
+  box-shadow: 
+    0 30px 60px -15px var(--glass-shadow),
+    0 8px 24px -8px var(--glass-shadow),
+    inset 0 1.5px 2px -0.5px var(--glass-highlight), /* Top reflection edge */
+    inset 0 -1.5px 3px -0.5px var(--glass-caustic),  /* Bottom light refraction */
+    inset 0 0 0 1px var(--glass-border);             /* Outer border ring */
+}
+
+/* Curved Aqua mirror reflection */
+.liquid-nav::before {
+  content: '';
+  position: absolute;
+  top: 1px; left: 1px; right: 1px; height: 44%;
+  border-radius: 99px 99px 20px 20px / 99px 99px 10px 10px;
+  background: linear-gradient(180deg, var(--reflection-start) 0%, var(--reflection-end) 100%);
+  pointer-events: none;
+  z-index: 6; 
+  transition: background 0.4s ease;
+}
+
+/* Mouse Glare Reflection */
+.liquid-glare-container {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.liquid-glare {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(circle 85px at var(--x, 50%) var(--y, 50%), var(--glare-color) 0%, transparent 100%);
+  mix-blend-mode: overlay;
+}
+
+.liquid-nav:hover .liquid-glare {
+  opacity: 1;
+}
+
+/* Navigation items container */
+.nav-items {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  z-index: 8;
+}
+
+/* Active Sliding Pill */
+.active-pill {
+  position: absolute;
+  top: 0; left: 0; 
+  height: 40px;
+  background: var(--pill-bg);
+  border-radius: 99px;
+  box-shadow: var(--pill-shadow);
+  z-index: 7;
+  
+  /* Apple Bouncy Spring Curve */
+  transition: 
+    transform 0.48s cubic-bezier(0.25, 1, 0.33, 1.15), 
+    width 0.48s cubic-bezier(0.25, 1, 0.33, 1.15),
+    background 0.4s ease, 
+    box-shadow 0.4s ease;
+}
+
+/* Navigation Buttons */
+.nav-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0 16px;
+  height: 40px;
+  border-radius: 99px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--icon-color);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.25s ease;
+  outline: none;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.btn-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.nav-btn:active .btn-content {
+  transform: scale(0.93);
+}
+
+.nav-btn.active {
+  color: var(--icon-active);
+}
+
+/* Non-pill buttons and elements */
+.nav-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 6px;
+  z-index: 9;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.nav-static-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0 14px;
+  height: 40px;
+  border-radius: 99px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--icon-color);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.25s ease, background-color 0.2s ease;
+  outline: none;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.nav-static-btn:hover {
+  color: var(--icon-active);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .nav-static-btn:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Divider & Theme Toggle Button */
+.liquid-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--divider);
+  margin: 0 6px;
+  z-index: 9;
+  transition: background 0.4s ease;
+}
+
+.theme-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--icon-color);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 9;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.25s ease;
+}
+
+.theme-btn:hover, .theme-btn:active {
+  color: var(--icon-active);
+}
+
+.theme-icon-wrapper {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.theme-btn:active .theme-icon-wrapper {
+  transform: scale(0.85);
+}
+
+.theme-icon-wrapper svg {
+  position: absolute;
+  top: 0; left: 0;
+  transition: transform 0.48s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.38s ease;
+  stroke-width: 2.2;
+}
+
+/* Sun/Moon Rotation classes */
+.sun { opacity: 1; transform: rotate(0deg) scale(1); }
+.moon { opacity: 0; transform: rotate(-90deg) scale(0); }
+
+.dark .sun { opacity: 0; transform: rotate(90deg) scale(0); }
+.dark .moon { opacity: 1; transform: rotate(0deg) scale(1); }
+
+/* Responsive Mobile Expansion styling */
+@media (max-width: 767px) {
+  .liquid-nav {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 24px;
+    padding: 10px 14px;
+    width: 90vw;
+    max-height: 60px;
+    transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.4s ease;
+    overflow: hidden;
+  }
+  
+  .liquid-nav.expanded {
+    max-height: 400px;
+    border-radius: 28px;
+  }
+  
+  .mobile-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    width: 100%;
+    z-index: 10;
+  }
+  
+  .mobile-menu-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  
+  .liquid-nav.expanded .mobile-menu-content {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  .mobile-menu-content .nav-btn,
+  .mobile-menu-content .nav-static-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0 12px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .mobile-menu-content .active-pill {
+    display: none; /* Hide sliding pill in vertical mobile layout */
+  }
+
+  .liquid-nav::before {
+    display: none; /* Hide glass highlight sheen on mobile */
+  }
+}
+

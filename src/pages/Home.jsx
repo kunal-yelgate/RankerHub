@@ -1,13 +1,18 @@
-import React, { useRef, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Pagination } from "swiper/modules";
+
+// Import Swiper styles
+import "swiper/css";
+import "swiper/css/pagination";
+
 import {
   Sparkles,
   Code2,
   BookOpen,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
   Award,
   Users,
   Zap,
@@ -25,8 +30,7 @@ import GlowRingLogo from "../components/ui/GlowRingLogo";
 
 
 export const Home = () => {
-  const featureRailRef = useRef(null);
-  const location = useLocation(); 
+  const location = useLocation();
 
   useEffect(() => {
     if (location.hash === "#features") {
@@ -41,15 +45,7 @@ export const Home = () => {
     }
   }, [location]);
 
-  const scrollFeatures = (direction) => {
-    const rail = featureRailRef.current;
-    if (!rail) return;
 
-    rail.scrollBy({
-      left: direction * Math.min(rail.clientWidth * 0.85, 420),
-      behavior: "smooth"
-    });
-  };
 
   const features = [
     {
@@ -58,15 +54,17 @@ export const Home = () => {
       icon: Github,
       color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
       accent: "from-blue-500/20 via-cyan-500/10 to-transparent",
+      gradient: "from-blue-500/20 to-cyan-400/20 shadow-blue-500/10",
       stats: "PRs, reviews, language ranks",
       status: "Contribution intelligence"
     },
     {
       title: "RankHer",
-      description:"A spotlight ranking and community to support female software engineers.",
+      description: "A spotlight ranking and community to support female software engineers.",
       icon: Sparkles,
       color: "text-pink-500 bg-pink-500/10 border-pink-500/20",
       accent: "from-pink-500/20 via-rose-500/10 to-transparent",
+      gradient: "from-pink-500/20 to-rose-400/20 shadow-pink-500/10",
       stats: "Spotlights, cohorts, recognition",
       status: "Inclusive rankings"
     },
@@ -76,6 +74,7 @@ export const Home = () => {
       icon: Code2,
       color: "text-purple-500 bg-purple-500/10 border-purple-500/20",
       accent: "from-violet-500/20 via-indigo-500/10 to-transparent",
+      gradient: "from-violet-500/20 to-indigo-400/20 shadow-violet-500/10",
       stats: "Daily practice, XP, ladders",
       status: "Challenge arena"
     },
@@ -85,6 +84,7 @@ export const Home = () => {
       icon: BookOpen,
       color: "text-orange-500 bg-orange-500/10 border-orange-500/20",
       accent: "from-amber-500/20 via-orange-500/10 to-transparent",
+      gradient: "from-amber-500/20 to-orange-400/20 shadow-amber-500/10",
       stats: "Streaks, focus sessions, rituals",
       status: "Habit companion"
     },
@@ -94,6 +94,7 @@ export const Home = () => {
       icon: Trophy,
       color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
       accent: "from-emerald-500/20 via-teal-500/10 to-transparent",
+      gradient: "from-emerald-500/20 to-teal-400/20 shadow-emerald-500/10",
       stats: "Badges, trophies, milestones",
       status: "Progress rewards"
     },
@@ -103,6 +104,7 @@ export const Home = () => {
       icon: UserPlus,
       color: "text-sky-500 bg-sky-500/10 border-sky-500/20",
       accent: "from-sky-500/20 via-blue-500/10 to-transparent",
+      gradient: "from-sky-500/20 to-blue-400/20 shadow-sky-500/10",
       stats: "Followers, activity, peer ranks",
       status: "Social coding graph"
     },
@@ -112,6 +114,7 @@ export const Home = () => {
       icon: Gift,
       color: "text-fuchsia-500 bg-fuchsia-500/10 border-fuchsia-500/20",
       accent: "from-fuchsia-500/20 via-purple-500/10 to-transparent",
+      gradient: "from-fuchsia-500/20 to-purple-400/20 shadow-fuchsia-500/10",
       stats: "Invites, rewards, growth loops",
       status: "Community expansion"
     }
@@ -226,8 +229,9 @@ export const Home = () => {
         </div>
       </section>
 
-      <section id="features" className="py-20 px-6 max-w-6xl mx-auto space-y-8" aria-labelledby="features-heading">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+      <section id="features" className="py-20 space-y-8 overflow-hidden" aria-labelledby="features-heading">
+        {/* Section header */}
+        <div className="px-6 max-w-6xl mx-auto">
           <div className="max-w-2xl space-y-3">
             <span className="inline-flex w-fit items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">
               Feature suite
@@ -239,86 +243,88 @@ export const Home = () => {
               A connected set of ranking, learning, habit, achievement, social, and referral systems designed for a modern developer platform.
             </p>
           </div>
-
-          <div className="hidden sm:flex items-center gap-2" aria-label="Feature carousel controls">
-            <button
-              type="button"
-              onClick={() => scrollFeatures(-1)}
-              className="h-10 w-10 rounded-xl border border-slate-200/80 bg-white/70 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-500/40 hover:text-violet-600 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:border-slate-800/80 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:text-violet-300"
-              aria-label="Scroll feature cards left"
-            >
-              <ChevronLeft className="mx-auto h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollFeatures(1)}
-              className="h-10 w-10 rounded-xl border border-slate-200/80 bg-white/70 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-500/40 hover:text-violet-600 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:border-slate-800/80 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:text-violet-300"
-              aria-label="Scroll feature cards right"
-            >
-              <ChevronRight className="mx-auto h-5 w-5" />
-            </button>
-          </div>
         </div>
 
-        <div
-          ref={featureRailRef}
-          className="scrollbar-none -mx-6 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-6 pb-4 pt-2 touch-pan-x"
-          role="list"
-          aria-label="RankerHub feature cards"
-        >
-          {features.map((feature, idx) => {
-            const Icon = feature.icon;
-            return (
-              <Card
-                key={feature.title}
-                glow={true}
-                role="listitem"
-                whileHover={{ y: -6, scale: 1.015 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
-                className="group relative h-[340px] min-w-[82vw] snap-start overflow-hidden p-0 hover:border-violet-500/30 sm:min-w-[360px] md:min-w-[380px] lg:min-w-[400px]"
-              >
-                <div className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br ${feature.accent}`} aria-hidden="true" />
-                <div className="relative flex h-full flex-col justify-between p-6">
-                  <div className="space-y-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-md ${feature.color}`}>
-                        <Icon className="h-6 w-6" aria-hidden="true" />
+        {/* Feature slider using Swiper JS */}
+        <div className="w-full max-w-6xl mx-auto px-6">
+          <Swiper
+            modules={[Autoplay, Pagination]}
+            spaceBetween={24}
+            slidesPerView={1}
+            autoplay={{
+              delay: 3000,
+              disableOnInteraction: false,
+              pauseOnMouseEnter: true,
+            }}
+            pagination={{
+              clickable: true,
+              dynamicBullets: true,
+            }}
+            breakpoints={{
+              640: {
+                slidesPerView: 2,
+                spaceBetween: 24,
+              },
+              1024: {
+                slidesPerView: 3,
+                spaceBetween: 30,
+              },
+            }}
+            className="swiper-container-features"
+          >
+            {features.map((feature, idx) => {
+              const Icon = feature.icon;
+              return (
+                <SwiperSlide key={`${feature.title}-${idx}`}>
+                  <div className="frosted-gradient-wrapper group">
+                    {/* Vibrant frosted gradient backglow */}
+                    <div className={`absolute -inset-1 bg-gradient-to-br ${feature.gradient} rounded-[28px] blur-xl opacity-25 dark:opacity-35 group-hover:opacity-45 transition-opacity duration-500 pointer-events-none`} />
+                    
+                    <Card
+                      glow={false}
+                      className="frosted-glass-card group relative overflow-hidden p-0"
+                    >
+                      <div className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br ${feature.accent}`} aria-hidden="true" />
+                      <div className="relative flex h-full flex-col justify-between p-6 z-10">
+                        <div className="space-y-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-md ${feature.color}`}>
+                              <Icon className="h-6 w-6" aria-hidden="true" />
+                            </div>
+                            <span className="rounded-full border border-slate-200/70 bg-white/60 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700/70 dark:bg-slate-950/40 dark:text-slate-400 transition-all duration-300 group-hover:border-violet-500/30 group-hover:text-violet-600 dark:group-hover:text-violet-400 group-hover:scale-105">
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+                          </div>
+
+                          <div className="space-y-3">
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                              {feature.status}
+                            </p>
+                            <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                              {feature.title}
+                            </h3>
+                            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                              {feature.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-6 rounded-2xl border border-slate-200/70 bg-white/55 dark:bg-slate-950/35 px-4 py-3 shadow-sm transition-all duration-500 ease-out group-hover:border-violet-500/40 group-hover:bg-white/85 dark:group-hover:bg-slate-950/50 group-hover:shadow-md">
+                          <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                            Built around
+                          </span>
+                          <span className="mt-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {feature.stats}
+                          </span>
+                        </div>
                       </div>
-                      <span className="rounded-full border border-slate-200/70 bg-white/60 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:border-slate-700/70 dark:bg-slate-950/40 dark:text-slate-400 transition-all duration-300 group-hover:border-violet-500/30 group-hover:text-violet-600 dark:group-hover:text-violet-400 group-hover:scale-105">
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
-                        {feature.status}
-                      </p>
-                      <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                        {feature.title}
-                      </h3>
-                      <p className="text-sm leading-7 text-slate-500 dark:text-slate-400">
-                        {feature.description}
-                      </p>
-                    </div>
+                    </Card>
                   </div>
-
-                  <div className="rounded-2xl border border-slate-200/70 bg-white/55 dark:bg-slate-950/35 px-4 py-3 shadow-sm transition-all duration-500 ease-out group-hover:border-violet-500/40 group-hover:bg-white/85 dark:group-hover:bg-slate-950/50 group-hover:shadow-md">
-                    <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                      Built around
-                    </span>
-                    <span className="mt-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                      {feature.stats}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+                </SwiperSlide>
+              );
+            })}
+          </Swiper>
         </div>
-
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500 sm:hidden">
-          Swipe to view all features
-        </p>
       </section>
     </div>
   );
