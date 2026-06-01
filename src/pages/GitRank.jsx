@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Filter, Star, Trophy, RefreshCw, GitCommit, Calendar, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
-import { collection, query, doc, orderBy, limit, startAfter, onSnapshot, getDocs, runTransaction } from "firebase/firestore";
+import { collection, query, doc, where, orderBy, limit, startAfter, onSnapshot, getDocs, runTransaction } from "firebase/firestore";
 import { useSearchParams } from "react-router-dom";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";

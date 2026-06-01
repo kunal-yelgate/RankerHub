@@ -7,7 +7,7 @@ export const Card = ({
   className = "",
   glow = true,
   onClick,
-  hoverable = !!onClick,
+  hoverable: _hoverable = !!onClick,
   ...props
 }) => {
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0 });
