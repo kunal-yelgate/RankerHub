@@ -171,6 +171,7 @@ export const Profile = () => {
       const isEnabling = !userData?.privateRepoSyncEnabled;
       const userRef = doc(db, "users", user.uid);
       
+
       await updateDoc(userRef, { privateRepoSyncEnabled: isEnabling });
       
       if (setUserData) {

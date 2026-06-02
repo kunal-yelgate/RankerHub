@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GithubAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { connectAuthEmulator, getAuth, GithubAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore } from "firebase/firestore";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -33,6 +33,12 @@ if (!hasRequiredConfig) {
 // Initialize Firebase
 const app = hasRequiredConfig ? initializeApp(firebaseConfig) : null;
 
+const shouldUseEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true";
+const authEmulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost";
+const authEmulatorPort = Number(import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_PORT || 9099);
+const firestoreEmulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost";
+const firestoreEmulatorPort = Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || 8080);
+
 // Initialize Firebase services
 export const auth = app ? getAuth(app) : null;
 export const githubProvider = new GithubAuthProvider();
@@ -52,6 +58,13 @@ githubProvider.setCustomParameters({
 });
 
 export const db = app ? getFirestore(app) : null;
+
+if (shouldUseEmulators && auth && db) {
+  connectAuthEmulator(auth, `http://${authEmulatorHost}:${authEmulatorPort}`, {
+    disableWarnings: true,
+  });
+  connectFirestoreEmulator(db, firestoreEmulatorHost, firestoreEmulatorPort);
+}
 
 // Initialize analytics only in the browser, and don't let analytics
 // availability crash auth or the rest of Firebase setup.
