@@ -50,7 +50,7 @@ export const GitRank = () => {
       return () => clearTimeout(timer);
     }
 
-    // Build the query dynamically based on language selection
+// Build the query dynamically based on language selection and strict sorting
     const constraints = [
       where("onboardingStatus", "==", "complete"),
       orderBy("points.gitRankPoints", "desc")
@@ -93,15 +93,14 @@ export const GitRank = () => {
     );
 
     return () => unsubscribe();
-  }, [user, selectedLanguage]); // Dependency array updated
-
+}, [user, selectedLanguage]); // Dependency array updated
   // Pagination Function (Fetch next 50)
   const loadMoreUsers = async () => {
     if (!lastVisible || !hasMore || loadingMore) return;
 
     setLoadingMore(true);
     try {
-      const constraints = [
+const constraints = [
         where("onboardingStatus", "==", "complete"),
         orderBy("points.gitRankPoints", "desc")
       ];
