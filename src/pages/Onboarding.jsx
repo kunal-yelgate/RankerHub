@@ -5,7 +5,6 @@ import {
   User,
   Calendar,
   Building2,
-  CheckCircle2,
   AlertCircle,
   HelpCircle,
   MapPin,
@@ -41,7 +40,7 @@ export const Onboarding = () => {
   const displayName = hasEditedName ? name : suggestedName;
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
-  const [city] = useState("Mumbai"); // Strictly Locked
+  const [city, setCity] = useState("");
   
   // Searchable college dropdown state
   const [collegeSearch, setCollegeSearch] = useState("");
@@ -89,14 +88,15 @@ export const Onboarding = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Helper to generate unique 6-character uppercase code
+  // Helper to generate a unique 6-character uppercase code using
+  // crypto.getRandomValues() for better randomness than Math.random()
   const generateReferralCode = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let code = "";
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
+    const randomValues = new Uint8Array(6);
+    crypto.getRandomValues(randomValues);
+    return Array.from(randomValues)
+      .map((byte) => chars[byte % chars.length])
+      .join("");
   };
 
   const handleSelectCollege = (college) => {
@@ -162,6 +162,12 @@ export const Onboarding = () => {
       return;
     }
 
+    if (!city.trim()) {
+      setError("Please enter your city.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const activeUid = user.uid;
       const githubUsername = userData?.githubUsername || user.reloadUserInfo?.screenName || "";
@@ -191,6 +197,12 @@ export const Onboarding = () => {
           newReferralCode = generateReferralCode();
           attempts++;
         }
+      }
+
+      if (!codeUnique) {
+        setError("Could not generate a unique referral code after multiple attempts. Please try again.");
+        setIsLoading(false);
+        return;
       }
 
       // Referral variables
@@ -241,7 +253,7 @@ export const Onboarding = () => {
           avatar: userData?.avatar || user.photoURL || "",
           gender,
           dob,
-          city: "Mumbai",
+          city: city.trim(),
           college: selectedCollege === "Other" ? customCollege.trim() : selectedCollege,
           linkedinUrl: linkedinUrl.trim() || "",
           instagramHandle: instagramHandle.trim().replace(/^@/, "") || "",
@@ -357,7 +369,7 @@ export const Onboarding = () => {
               Finish Onboarding
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-              Create your gamified developer profile in the Mumbai college hub.
+              Create your gamified developer profile and join the leaderboard.
             </p>
           </div>
 
@@ -448,20 +460,18 @@ export const Onboarding = () => {
                 />
               </div>
 
-              {/* City (Strictly locked to Mumbai) */}
+              {/* City */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" /> City (Mumbai Only)
+                  <MapPin className="w-3.5 h-3.5" /> City
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={city}
-                    disabled
-                    className="w-full pl-4 pr-10 py-3 text-sm rounded-xl border border-slate-200/50 dark:border-slate-800/50 bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 cursor-not-allowed font-extrabold focus:outline-none"
-                  />
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
-                </div>
+                <input
+                  type="text"
+                  placeholder="Enter your city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:text-white transition-all placeholder:text-slate-400"
+                />
               </div>
 
             </div>
