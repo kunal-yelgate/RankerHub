@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Sparkles, Quote, Star, Loader2, Users } from "lucide-react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/ui/Card";
@@ -20,7 +20,9 @@ export const RankHer = () => {
     const q = query(
       collection(db, "users"),
       where("onboardingStatus", "==", "complete"),
-      where("gender", "==", "female")
+      where("gender", "==", "female"),
+      orderBy("points.totalPoints", "desc"),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(
@@ -30,9 +32,6 @@ export const RankHer = () => {
           uid: doc.id,
           ...doc.data(),
         }));
-        users.sort(
-          (a, b) => (b.points?.totalPoints || 0) - (a.points?.totalPoints || 0)
-        );
         setWomenUsers(users.map((u, i) => ({ ...u, rank: i + 1 })));
       },
       (error) => {
