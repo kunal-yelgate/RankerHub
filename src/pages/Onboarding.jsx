@@ -199,6 +199,12 @@ export const Onboarding = () => {
         }
       }
 
+      if (!codeUnique) {
+        setError("Could not generate a unique referral code after multiple attempts. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       // Referral variables
       let referrerUid = null;
       let referrerCodeClean = referralCode.trim().toUpperCase();
