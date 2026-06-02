@@ -9,7 +9,9 @@ import { useAuth } from "../context/AuthContext";
 import {
   fetchDevelopers,
   hydrateConnections,
-  toggleFollowStatus
+  toggleFollowStatus,
+  subscribeToFollowing,
+  subscribeToFollowers
 } from "../services/friendsService";
 
 const tabs = [
@@ -35,17 +37,14 @@ export const Friends = () => {
   const [followerIds, setFollowerIds] = useState([]);
 
   useEffect(() => {
+    let unsubFollowing = () => {};
+    let unsubFollowers = () => {};
+
     const loadDevelopers = async () => {
       try {
         const fetchedDevs = await fetchDevelopers();
-        // Remove the current logged-in user from the list
         const filteredDevs = fetchedDevs.filter(dev => dev.id !== currentUser?.uid);
         setDevelopers(filteredDevs);
-        
-        // Mock a couple of followers for UI testing (remove once #105 backend logic is done)
-        if (filteredDevs.length > 2) {
-          setFollowerIds([filteredDevs[0].id, filteredDevs[1].id]);
-        }
       } catch (error) {
         console.error("Failed to load developers", error);
       } finally {
@@ -53,7 +52,23 @@ export const Friends = () => {
       }
     };
     
-    loadDevelopers();
+    if (currentUser?.uid) {
+      loadDevelopers();
+      
+      // Setup Real-time Firebase Listeners
+      unsubFollowing = subscribeToFollowing(currentUser.uid, (ids) => {
+        setFollowingIds(ids);
+      });
+      
+      unsubFollowers = subscribeToFollowers(currentUser.uid, (ids) => {
+        setFollowerIds(ids);
+      });
+    }
+
+    return () => {
+      unsubFollowing();
+      unsubFollowers();
+    };
   }, [currentUser]);
 
   const connections = useMemo(
@@ -68,8 +83,10 @@ export const Friends = () => {
     following: "Developers whose rankings, activity, and learning notes you follow."
   };
 
-  const handleToggleFollow = (developerId) => {
-    setFollowingIds((currentIds) => toggleFollowStatus(currentIds, developerId));
+  const handleToggleFollow = async (developerId) => {
+    const isFollowing = followingIds.includes(developerId);
+    // Directly mutate Firebase. The onSnapshot listener will automatically update the UI!
+    await toggleFollowStatus(currentUser.uid, developerId, isFollowing);
   };
 
   if (loading) {
@@ -196,15 +213,15 @@ export const Friends = () => {
             ))}
           </div>
 
-          <Card className="p-5 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 border-cyan-500/20">
+          <Card className="p-5 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-slate-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+              <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-slate-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                 <Activity className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-slate-900 dark:text-white my-0">Connection insights</h3>
+                <h3 className="font-black text-slate-900 dark:text-white my-0">Database Connected</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                  Follow state is mocked locally today and isolated in a service so API integration can replace it later.
+                  Follow state is now persisting via real-time Firestore listeners. Refresh to see your friends!
                 </p>
               </div>
             </div>
