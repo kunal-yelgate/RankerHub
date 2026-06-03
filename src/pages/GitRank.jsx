@@ -138,9 +138,10 @@ const constraints = [
     }
   };
 
-  // 2. Fetch GitHub Events/Repos for Charts (Authenticated Only)
+ // 2. Fetch GitHub Events/Repos for Charts (Authenticated Only)
   useEffect(() => {
     if (!userData?.githubUsername) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingCharts(false);
       return;
     }
