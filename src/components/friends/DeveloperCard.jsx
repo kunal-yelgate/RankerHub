@@ -102,4 +102,3 @@ export const DeveloperCard = ({ developer, isFollowing, onToggleFollow, compact 
 };
 
 export default DeveloperCard;
-//
