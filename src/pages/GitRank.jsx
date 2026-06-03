@@ -38,17 +38,10 @@ export const GitRank = () => {
 
   const languages = ["All", "TypeScript", "Rust", "Go", "Python", "Kotlin", "Ruby", "JavaScript"];
 
-  // 1. Real-time Leaderboard Listener (Server-Side Filtered)
+  // 1. Real-time Leaderboard Listener (Server-Side Filtered - NOW OPEN FOR GUESTS)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingUsers(true);
-
-    if (!user) {
-      const timer = setTimeout(() => {
-        setLoadingUsers(false);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
 
     // Build the query dynamically based on language selection
     const constraints = [
@@ -56,7 +49,7 @@ export const GitRank = () => {
       orderBy("points.gitRankPoints", "desc")
     ];
 
-    // DB level language filter!
+    // DB level language filter
     if (selectedLanguage !== "All") {
       constraints.push(where("githubStats.primaryLanguage", "==", selectedLanguage));
     }
@@ -93,7 +86,7 @@ export const GitRank = () => {
     );
 
     return () => unsubscribe();
-  }, [user, selectedLanguage]); // Dependency array updated
+  }, [selectedLanguage]); // Removed 'user' dependency to allow guest fetching
 
   // Pagination Function (Fetch next 50)
   const loadMoreUsers = async () => {
@@ -146,9 +139,12 @@ export const GitRank = () => {
     }
   };
 
-  // 2. Fetch GitHub Events/Repos for Charts
+  // 2. Fetch GitHub Events/Repos for Charts (Authenticated Only)
   useEffect(() => {
-    if (!userData?.githubUsername) return;
+    if (!userData?.githubUsername) {
+      setLoadingCharts(false);
+      return;
+    }
 
     const fetchAnalytics = async () => {
       setLoadingCharts(true);
@@ -279,11 +275,11 @@ export const GitRank = () => {
     return `${mins}m ${secs}s`;
   };
 
-  // Filter leaderboard lists (Only Search is client side now)
+  // Filter leaderboard lists (Only Search is client side now, filtering cached DB data)
   const filteredData = useMemo(() => {
-    return usersList.filter((user) => {
-      const name = user.name || "";
-      const username = user.githubUsername || "";
+    return usersList.filter((u) => {
+      const name = u.name || "";
+      const username = u.githubUsername || "";
       return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
              username.toLowerCase().includes(searchTerm.toLowerCase());
     });
@@ -811,7 +807,7 @@ export const GitRank = () => {
         </Card>
       )}
 
-      {/* 2. Top 3 Contributors Grid */}
+      {/* 2. Top 3 Contributors Grid (Now visible to everyone) */}
       {!loadingUsers && topContributors.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {topContributors.map((u, idx) => (
@@ -875,7 +871,7 @@ export const GitRank = () => {
         </div>
       )}
 
-      {/* 3. Leaderboard Table / Search & Filters Controls */}
+      {/* 3. Leaderboard Table / Search & Filters Controls (Unlocked) */}
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
           {/* Search */}
@@ -920,21 +916,6 @@ export const GitRank = () => {
             <div className="py-20 text-center text-slate-400">
               <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-sm font-bold">Synchronizing Live Standings...</p>
-            </div>
-          ) : !user ? (
-            /* Locked Leaderboard state for guests */
-            <div className="py-16 text-center text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
-              <Trophy className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
-              <p className="text-sm font-bold">Leaderboard Standings Locked</p>
-              <p className="text-xs mt-1 leading-relaxed">
-                Please authenticate with your GitHub account to unlock the global standings and compare your stats with other developers.
-              </p>
-              <button
-                onClick={login}
-                className="mt-4 px-4 py-2 bg-violet-600 text-white font-bold text-xs rounded-xl shadow-md hover:bg-violet-700 transition-colors"
-              >
-                Log In Now
-              </button>
             </div>
           ) : (
             <table className="w-full text-left mt-4 border-collapse">
@@ -998,7 +979,7 @@ export const GitRank = () => {
                         {u.githubStats?.reviews || 0}
                       </td>
 
-                      {/* Points cell (Now shows GitRank Points only) */}
+                      {/* Points cell */}
                       <td className="py-4 px-4 text-right font-black text-slate-900 dark:text-white">
                         {u.points?.gitRankPoints?.toLocaleString() || 0}
                       </td>
