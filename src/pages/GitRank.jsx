@@ -12,6 +12,9 @@ import axios from "axios";
 
 export const GitRank = () => {
   const { user, userData, fetchGitHubStats, login } = useAuth();
+// ============================================================
+  // ISSUE #194: URL Parameter Sync for State Persistence
+  // ============================================================
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get("search") || "";
   const selectedLanguage = searchParams.get("lang") || "All";
@@ -21,6 +24,7 @@ export const GitRank = () => {
     const newParams = new URLSearchParams(searchParams);
     if (val) newParams.set("search", val);
     else newParams.delete("search");
+// Use replace: true so we don't bloat the browser history with every keystroke
     setSearchParams(newParams, { replace: true });
   };
 
