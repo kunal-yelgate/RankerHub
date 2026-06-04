@@ -2,20 +2,16 @@ import React, { useEffect, useState } from "react";
 import { Sparkles, Quote, Star, Loader2 } from "lucide-react";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { useAuth } from "../context/AuthContext";
 import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 
 export const RankHer = () => {
-  const { user } = useAuth();
-
   // null  = subscription has not yet returned data (loading)
   // []    = subscription returned, zero qualifying users
   // [...] = real users ranked by totalPoints
   const [womenUsers, setWomenUsers] = useState(null);
 
   useEffect(() => {
-
     const q = query(
       collection(db, "users"),
       where("onboardingStatus", "==", "complete"),
@@ -40,10 +36,9 @@ export const RankHer = () => {
     );
 
     return () => unsubscribe();
-  }, [user]);
+  }, []);
 
   const renderBody = () => {
-
     if (womenUsers === null) {
       return (
         <div className="flex items-center justify-center py-12 text-slate-400">
