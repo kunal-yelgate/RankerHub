@@ -11,7 +11,6 @@ import {
   X,
   Save,
   Plus,
-  Activity,
   User,
   Building2,
   HelpCircle,
@@ -373,12 +372,12 @@ export const Profile = () => {
       // authenticated user owns it before allowing any updates.
       const userDocSnap = await getDoc(userRef);
       if (!userDocSnap.exists()) {
-        setToast({ message: "Profile not found. Please try again.", type: "error" });
+        setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: "Profile not found. Please try again.", type: "error" }]);
         return;
       }
 
       if (userDocSnap.data().uid !== user.uid) {
-        setToast({ message: "Unauthorized: You can only update your own profile.", type: "error" });
+        setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: "Unauthorized: You can only update your own profile.", type: "error" }]);
         return;
       }
 

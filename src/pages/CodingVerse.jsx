@@ -70,7 +70,6 @@ function runJavaScript(code) {
   };
 
   try {
-    // eslint-disable-next-line no-new-func
     const fn = new Function("console", code);
     fn(fakeconsole);
   } catch (e) {
