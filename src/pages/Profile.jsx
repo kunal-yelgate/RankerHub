@@ -20,7 +20,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Github, Linkedin, Instagram } from "../components/ui/Icons";
-import { query, collection, where, getCountFromServer, doc, updateDoc, getDoc } from "firebase/firestore";
+import { query, collection, where, getCountFromServer, doc, getDoc, writeBatch, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import successTick from "../assets/animations/succes_tick.json";
@@ -36,7 +36,7 @@ export const Profile = () => {
   const { userData, user, setUserData, syncGitHubData } = useAuth();
   const [copied, setCopied] = useState(false);
   const [rank, setRank] = useState("Loading...");
-  const [toast, setToast] = useState(null);
+  const [toasts, setToasts] = useState([]);
   const [editingSocial, setEditingSocial] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -181,7 +181,7 @@ export const Profile = () => {
         }));
       }
 
-      setToast({ message: "Profile updated successfully!", type: "success" });
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: "Profile updated successfully!", type: "success" }]);
       setIsEditModalOpen(false);
     } catch (err) {
       console.error("Error updating profile:", err);
@@ -290,7 +290,10 @@ export const Profile = () => {
       
       updateData.updatedAt = new Date().toISOString();
       
-      await updateDoc(userRef, updateData);
+      // Use Atomic Batch Write instead of updateDoc
+      const batch = writeBatch(db);
+      batch.update(userRef, updateData);
+      await batch.commit();
       
       const updatedUserDoc = await getDoc(userRef);
       const updatedData = updatedUserDoc.exists() ? updatedUserDoc.data() : null;
@@ -310,10 +313,10 @@ export const Profile = () => {
       setEditingSocial(null);
       setEditValue("");
       
-      setToast({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`, type: "success" });
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`, type: "success" }]);
     } catch (err) {
       console.error("Error updating social link:", err);
-      setToast({ message: `Failed to update ${type}. Please try again.`, type: "error" });
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: `Failed to update ${type}. Please try again.`, type: "error" }]);
     } finally {
       setUpdating(false);
     }
@@ -325,19 +328,19 @@ export const Profile = () => {
       const isEnabling = !userData?.privateRepoSyncEnabled;
       const userRef = doc(db, "users", user.uid);
       
-      await updateDoc(userRef, { privateRepoSyncEnabled: isEnabling });
+      // Use Atomic Batch Write instead of updateDoc
+      const batch = writeBatch(db);
+      batch.update(userRef, { privateRepoSyncEnabled: isEnabling });
+      await batch.commit();
       
       if (setUserData) {
         setUserData(prev => ({ ...prev, privateRepoSyncEnabled: isEnabling }));
       }
       
-      setToast({ 
-        message: isEnabling ? "Private repository sync enabled!" : "Private repository sync disabled.", 
-        type: "success" 
-      });
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: isEnabling ? "Private repository sync enabled!" : "Private repository sync disabled.", type: "success" }]);
     } catch (err) {
       console.error("Toggle sync error:", err);
-      setToast({ message: "Failed to update sync preferences. Please try again.", type: "error" });
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: "Failed to update sync preferences. Please try again.", type: "error" }]);
     }
   };
 
@@ -653,16 +656,19 @@ export const Profile = () => {
               </div>
             ))}
           </div>
-
-            <AnimatePresence>
-              {toast && (
-                <Toast
-                  message={toast.message}
-                  type={toast.type}
-                  onClose={() => setToast(null)}
-                />
-              )}
-            </AnimatePresence>
+          {/* Toast Stack */}
+<div className="fixed bottom-6 right-5 z-50 flex flex-col gap-2 w-80">
+  <AnimatePresence>
+    {toasts.map((toast) => (
+      <Toast
+        key={toast.id}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+      />
+    ))}
+  </AnimatePresence>
+</div>
         </div>
       </Card>
 

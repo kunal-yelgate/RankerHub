@@ -10,7 +10,7 @@ import {
   setDoc,
   updateDoc,
   onSnapshot,
-  runTransaction
+  writeBatch
 } from "firebase/firestore";
 import axios from "axios";
 import { auth, db, signInWithGitHub, signOutUser } from "../lib/firebase";
@@ -47,14 +47,17 @@ const checkAndUpdateStreak = async (data, docRef) => {
                            (data.points?.codingVersePoints || 0) + 
                            newStreakPoints;
                            
+    const newLongestStreak = Math.max(data.longestStreak || 0, newStreak);
+
     try {
       await updateDoc(docRef, {
         streak: newStreak,
+        longestStreak: newLongestStreak,
         lastLogin: now.toISOString(),
         "points.streakPoints": newStreakPoints,
         "points.totalPoints": newTotalPoints
       });
-      console.log("Streak updated successfully. New Streak:", newStreak);
+      console.log("Streak updated successfully. New Streak:", newStreak, "| Longest:", newLongestStreak);
     } catch (err) {
       console.error("Failed to update streak:", err);
     }
@@ -66,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOnboarding, setIsOnboarding] = useState(false);
-// GitHub OAuth access token persisted in sessionStorage to survive page refreshes
+  // GitHub OAuth access token persisted in sessionStorage to survive page refreshes
   const [ghAccessToken, setGhAccessToken] = useState(() => {
     return sessionStorage.getItem("gh_access_token") || null;
   });
@@ -130,10 +133,9 @@ export const AuthProvider = ({ children }) => {
       const githubId = additionalInfo?.profile?.id || null;
       const avatar = additionalInfo?.profile?.avatar_url || authUser.photoURL || "";
 
-// Save the token to sessionStorage and state to keep user authenticated across refreshes
+      // Save the token to sessionStorage and state to keep user authenticated across refreshes
       sessionStorage.setItem("gh_access_token", accessToken);
       sessionStorage.setItem(`gh_token_${authUser.uid}`, accessToken);
-      setGhAccessToken(accessToken);
       setGhAccessToken(accessToken);
 
       const userDocRef = doc(db, "users", authUser.uid);
@@ -151,6 +153,7 @@ export const AuthProvider = ({ children }) => {
           privateRepoSyncEnabled: requestRepoScope,
           city: "",
           streak: 0,
+          longestStreak: 0,
           lastLogin: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           points: {
@@ -295,34 +298,40 @@ export const AuthProvider = ({ children }) => {
       const ghStats = await fetchGitHubStats(user.uid, userData.githubUsername);
       const userRef = doc(db, "users", user.uid);
 
-      await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-          throw new Error("User document does not exist in Firestore!");
-        }
+      // Phase 1: Retrieve Live Data
+      const userDoc = await getDoc(userRef);
+      if (!userDoc.exists()) {
+        throw new Error("User document does not exist in Firestore!");
+      }
 
-        const liveData = userDoc.data();
-        const currentReferralPoints = liveData.points?.referralPoints || 0;
-        const currentCodingVersePoints = liveData.points?.codingVersePoints || 0;
-        const currentStreakPoints = liveData.points?.streakPoints || 0;
+      const liveData = userDoc.data();
+      const currentReferralPoints = liveData.points?.referralPoints || 0;
+      const currentCodingVersePoints = liveData.points?.codingVersePoints || 0;
+      const currentStreakPoints = liveData.points?.streakPoints || 0;
 
-        const newGitRankPoints = ghStats.gitRankPoints;
-        const newTotalPoints = newGitRankPoints + currentReferralPoints + currentCodingVersePoints + currentStreakPoints;
+      const newGitRankPoints = ghStats.gitRankPoints;
+      const newTotalPoints = newGitRankPoints + currentReferralPoints + currentCodingVersePoints + currentStreakPoints;
 
-        transaction.update(userRef, {
-          "githubStats.commits": ghStats.commits,
-          "githubStats.prs": ghStats.prs,
-          "githubStats.reviews": ghStats.reviews,
-          "githubStats.repos": ghStats.publicRepos,
-          "githubStats.stars": ghStats.stars,
-          "githubStats.followers": ghStats.followers,
-          "githubStats.primaryLanguage": ghStats.primaryLanguage,
-          "points.gitRankPoints": newGitRankPoints,
-          "points.totalPoints": newTotalPoints,
-          "lastSync": new Date().toISOString()
-        });
+      // Phase 2: Issue Atomic Batch Write
+      const batch = writeBatch(db);
+      
+      batch.update(userRef, {
+        "githubStats.commits": ghStats.commits,
+        "githubStats.prs": ghStats.prs,
+        "githubStats.reviews": ghStats.reviews,
+        "githubStats.repos": ghStats.publicRepos,
+        "githubStats.stars": ghStats.stars,
+        "githubStats.followers": ghStats.followers,
+        "githubStats.primaryLanguage": ghStats.primaryLanguage,
+        "points.gitRankPoints": newGitRankPoints,
+        "points.totalPoints": newTotalPoints,
+        "lastSync": new Date().toISOString()
       });
-      console.log("Background GitHub sync completed successfully.");
+
+      // Execute atomic transaction
+      await batch.commit();
+
+      console.log("Background GitHub sync completed successfully via atomic batch.");
     } catch (error) {
       console.error("Background GitHub sync failed:", error);
     }
