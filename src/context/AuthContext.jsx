@@ -29,13 +29,17 @@ const checkAndUpdateStreak = async (data, docRef) => {
     let newStreakPoints = data.points?.streakPoints || 0;
     
     if (lastLoginDate) {
-      const diffTime = Math.abs(now - lastLoginDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === 1) {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const lastLoginDateStr = lastLoginDate.toDateString();
+      const todayStr = now.toDateString();
+      const yesterdayStr = yesterday.toDateString();
+
+      if (lastLoginDateStr === yesterdayStr) {
         newStreak += 1;
         newStreakPoints += 10;
-      } else if (diffDays > 1) {
+      } else if (lastLoginDateStr !== todayStr) {
         newStreak = 1;
       }
     } else {
