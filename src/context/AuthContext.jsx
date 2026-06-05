@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import axios from "axios";
 import { auth, db, signInWithGitHub, signOutUser } from "../lib/firebase";
+import { userDataCache, listenerOptimizer } from "../utils/firestoreOptimization";
 
 const AuthContext = createContext({});
 
@@ -96,20 +97,41 @@ export const AuthProvider = ({ children }) => {
         
         const userDocRef = doc(db, "users", currentUser.uid);
         
+        // Try to load from cache first to reduce initial load time
+        const docPath = `users/${currentUser.uid}`;
+        const cachedData = userDataCache.get(docPath);
+        if (cachedData) {
+          setUserData(cachedData);
+          setIsOnboarding(cachedData.onboardingStatus === "incomplete");
+          setLoading(false);
+        }
+
+        // Subscribe to real-time updates with debouncing to reduce re-renders
         unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            setUserData(data);
-            setIsOnboarding(data.onboardingStatus === "incomplete");
-            setLoading(false);
+
+            // Update cache immediately for fast subsequent reads
+            userDataCache.set(docPath, data);
+
+            // Debounce state updates to prevent excessive re-renders from rapid changes
+            listenerOptimizer.debounce(currentUser.uid, (userData) => {
+              setUserData(userData);
+              setIsOnboarding(userData.onboardingStatus === "incomplete");
+              setLoading(false);
+            }, data);
+
+            // Update streak asynchronously
             checkAndUpdateStreak(data, userDocRef);
           } else {
-            setUserData(null);
-            setIsOnboarding(true);
-            setLoading(false);
+            userDataCache.delete(docPath);
+            listenerOptimizer.debounce(currentUser.uid, () => {
+              setUserData(null);
+              setIsOnboarding(true);
+              setLoading(false);
+            }, null);
           }
         }, (error) => {
-          console.error("Real-time profile listener error:", error);
           setLoading(false);
         });
 
