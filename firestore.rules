@@ -75,7 +75,15 @@ service cloud.firestore {
             ) &&
             request.resource.data.points.codingVersePoints == resource.data.points.codingVersePoints &&
             request.resource.data.points.streakPoints == resource.data.points.streakPoints &&
-            request.resource.data.points.referralPoints == resource.data.points.referralPoints
+            request.resource.data.points.referralPoints == resource.data.points.referralPoints &&
+            request.resource.data.lastSync == request.time &&
+            (
+              !("lastSync" in resource.data) || 
+              resource.data.lastSync == null || 
+              (resource.data.lastSync is string) || 
+              (resource.data.lastSync is number) ||
+              (resource.data.lastSync is timestamp && request.time.toMillis() >= resource.data.lastSync.toMillis() + 300000)
+            )
           )
         );
 
