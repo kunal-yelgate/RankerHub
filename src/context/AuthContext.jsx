@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }) => {
               setLoading(false);
             }, null);
           }
-        }, (error) => {
+        }, (_error) => {
           setLoading(false);
         });
 

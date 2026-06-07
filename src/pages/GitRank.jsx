@@ -9,7 +9,6 @@ import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import GradientButton from "../components/ui/GradientButton";
 import axios from "axios";
-import { TokenManager } from "../utils/tokenManager";
 
 export const GitRank = () => {
   const { user, userData, fetchGitHubStats, login } = useAuth();
