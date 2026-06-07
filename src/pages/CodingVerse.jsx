@@ -223,6 +223,7 @@ export const CodingVerse = () => {
         const q = query(
           collection(db, "users"),
           where("onboardingStatus", "==", "complete"),
+          where("points.codingVersePoints", ">", 0),
           orderBy("points.codingVersePoints", "desc"),
           limit(20)
         );
