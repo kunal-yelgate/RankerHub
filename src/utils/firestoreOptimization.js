@@ -3,6 +3,9 @@
  * Implements caching strategies and pagination to reduce database reads
  */
 
+import { writeBatch } from "firebase/firestore";
+import { db } from "../lib/firebase";
+
 /**
  * Simple in-memory cache for Firestore documents
  * Reduces repeated reads for the same document
@@ -161,7 +164,7 @@ export class FirestoreBatchOptimizer {
   /**
    * Flush batch operations
    */
-  async flush(writeBatch) {
+  async flush(writeBatchInstance) {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
@@ -174,18 +177,23 @@ export class FirestoreBatchOptimizer {
     const operationsToCommit = [...this.batch];
     this.batch = [];
 
-    if (writeBatch) {
+    let activeBatch = writeBatchInstance;
+    if (!activeBatch && db && typeof writeBatch === "function") {
+      activeBatch = writeBatch(db);
+    }
+
+    if (activeBatch) {
       try {
         for (const op of operationsToCommit) {
           if (op.type === 'set') {
-            writeBatch.set(op.docRef, op.data, op.options);
+            activeBatch.set(op.docRef, op.data, op.options);
           } else if (op.type === 'update') {
-            writeBatch.update(op.docRef, op.data);
+            activeBatch.update(op.docRef, op.data);
           } else if (op.type === 'delete') {
-            writeBatch.delete(op.docRef);
+            activeBatch.delete(op.docRef);
           }
         }
-        await writeBatch.commit();
+        await activeBatch.commit();
       } catch (error) {
         // Re-queue failed operations
         this.batch = operationsToCommit;
