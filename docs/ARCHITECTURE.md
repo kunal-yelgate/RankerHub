@@ -1,4 +1,4 @@
-﻿# RankerHub Architecture Documentation
+# RankerHub Architecture Documentation
 
 **Version:** 1.0
 **Last Updated:** May 2026
@@ -1031,4 +1031,4 @@ including storage, security boundaries, and API request flow.
   - `gh_token_<uid>` — per-user token key
 - Token is also held in React memory via `AuthContext` to prevent XSS attacks
 
-### Architecture Diagram
+### Architecture Diagram
