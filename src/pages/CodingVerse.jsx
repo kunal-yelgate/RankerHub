@@ -59,90 +59,185 @@ print(two_sum([3, 2, 4], 6))        # [1, 2]
 };
 
 // --- JavaScript Sandboxed Executor ---
-function runJavaScript(code) {
-  const logs = [];
-  const errors = [];
-  const fakeconsole = {
-    log: (...args) => logs.push(args.map(formatValue).join(" ")),
-    error: (...args) => errors.push(args.map(formatValue).join(" ")),
-    warn: (...args) => logs.push("[WARN] " + args.map(formatValue).join(" ")),
-    info: (...args) => logs.push("[INFO] " + args.map(formatValue).join(" ")),
-  };
+function runJavaScript(code, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    const workerCode = `
+      function formatValue(v) {
+        if (v === null) return "null";
+        if (v === undefined) return "undefined";
+        if (Array.isArray(v) || typeof v === "object") {
+          try { return JSON.stringify(v); } catch { return String(v); }
+        }
+        return String(v);
+      }
 
-  try {
-    const fn = new Function("console", code);
-    fn(fakeconsole);
-  } catch (e) {
-    errors.push(`RuntimeError: ${e.message}`);
-  }
+      self.onmessage = function(e) {
+        const code = e.data;
+        const logs = [];
+        const errors = [];
+        const fakeconsole = {
+          log: (...args) => logs.push(args.map(formatValue).join(" ")),
+          error: (...args) => errors.push(args.map(formatValue).join(" ")),
+          warn: (...args) => logs.push("[WARN] " + args.map(formatValue).join(" ")),
+          info: (...args) => logs.push("[INFO] " + args.map(formatValue).join(" ")),
+        };
 
-  return { logs, errors };
-}
+        try {
+          const fn = new Function("console", code);
+          fn(fakeconsole);
+          self.postMessage({ logs, errors });
+        } catch (e) {
+          errors.push("RuntimeError: " + e.message);
+          self.postMessage({ logs, errors });
+        }
+      };
+    `;
 
-function formatValue(v) {
-  if (v === null) return "null";
-  if (v === undefined) return "undefined";
-  if (Array.isArray(v) || typeof v === "object") {
-    try { return JSON.stringify(v); } catch { return String(v); }
-  }
-  return String(v);
+    const blob = new Blob([workerCode], { type: "application/javascript" });
+    const url = URL.createObjectURL(blob);
+    const worker = new Worker(url);
+
+    const timer = setTimeout(() => {
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      resolve({
+        logs: [],
+        errors: ["TimeoutError: Execution exceeded time limit of 2 seconds."]
+      });
+    }, timeoutMs);
+
+    worker.onmessage = (e) => {
+      clearTimeout(timer);
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      resolve(e.data);
+    };
+
+    worker.onerror = (e) => {
+      clearTimeout(timer);
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      resolve({
+        logs: [],
+        errors: ["RuntimeError: " + (e.message || String(e))]
+      });
+    };
+
+    worker.postMessage(code);
+  });
 }
 
 // --- Pyodide Python Executor ---
-let pyodideInstance = null;
-let pyodideLoading = false;
+let pythonWorker = null;
+let pythonWorkerUrl = null;
+let isPythonWorkerReady = false;
 
-async function loadPyodide() {
-  if (pyodideInstance) return pyodideInstance;
-  if (pyodideLoading) {
-    // Wait for it
-    await new Promise((res) => {
-      const t = setInterval(() => { if (pyodideInstance) { clearInterval(t); res(); } }, 200);
-    });
-    return pyodideInstance;
-  }
-  pyodideLoading = true;
-  // Dynamically load Pyodide from CDN
-  if (!window.loadPyodide) {
-    await new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("Failed to load Pyodide script"));
-      document.head.appendChild(s);
-    });
-  }
-  pyodideInstance = await window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });
-  pyodideLoading = false;
-  return pyodideInstance;
-}
+function getPythonWorker() {
+  if (pythonWorker) return pythonWorker;
 
-async function runPython(code) {
-  const logs = [];
-  const errors = [];
-  try {
-    const pyodide = await loadPyodide();
-    // Redirect stdout/stderr
-    pyodide.runPython(`
+  const workerCode = `
+    let pyodidePromise = null;
+
+    async function initPyodide() {
+      if (pyodidePromise) return pyodidePromise;
+      pyodidePromise = (async () => {
+        importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");
+        const py = await self.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/" });
+        await py.runPythonAsync(\`
 import sys, io
 _stdout = io.StringIO()
 _stderr = io.StringIO()
 sys.stdout = _stdout
 sys.stderr = _stderr
-`);
-    try {
-      pyodide.runPython(code);
-      const out = pyodide.runPython("_stdout.getvalue()");
-      const err = pyodide.runPython("_stderr.getvalue()");
-      if (out) logs.push(...out.split("\n").filter(Boolean));
-      if (err) errors.push(...err.split("\n").filter(Boolean));
-    } catch (e) {
-      errors.push(String(e));
+\`);
+        return py;
+      })();
+      return pyodidePromise;
     }
-  } catch (e) {
-    errors.push(`Pyodide load error: ${e.message}`);
+
+    self.onmessage = async function(e) {
+      const code = e.data;
+      const logs = [];
+      const errors = [];
+
+      try {
+        const py = await initPyodide();
+        
+        await py.runPythonAsync(\`
+_stdout.seek(0)
+_stdout.truncate(0)
+_stderr.seek(0)
+_stderr.truncate(0)
+\`);
+
+        try {
+          await py.runPythonAsync(code);
+          const out = py.runPython("_stdout.getvalue()");
+          const err = py.runPython("_stderr.getvalue()");
+          if (out) logs.push(...out.split("\\n").filter(Boolean));
+          if (err) errors.push(...err.split("\\n").filter(Boolean));
+        } catch (err) {
+          errors.push(String(err));
+        }
+      } catch (loadErr) {
+        errors.push("Pyodide load error: " + loadErr.message);
+      }
+
+      self.postMessage({ logs, errors });
+    };
+  `;
+
+  const blob = new Blob([workerCode], { type: "application/javascript" });
+  pythonWorkerUrl = URL.createObjectURL(blob);
+  pythonWorker = new Worker(pythonWorkerUrl);
+  isPythonWorkerReady = false;
+  return pythonWorker;
+}
+
+function terminatePythonWorker() {
+  if (pythonWorker) {
+    pythonWorker.terminate();
+    pythonWorker = null;
   }
-  return { logs, errors };
+  if (pythonWorkerUrl) {
+    URL.revokeObjectURL(pythonWorkerUrl);
+    pythonWorkerUrl = null;
+  }
+  isPythonWorkerReady = false;
+}
+
+async function runPython(code, timeoutMs = 8000) {
+  const isInitialRun = !isPythonWorkerReady;
+  const currentTimeout = isInitialRun ? 20000 : timeoutMs;
+
+  return new Promise((resolve) => {
+    const worker = getPythonWorker();
+
+    let timer = setTimeout(() => {
+      terminatePythonWorker();
+      resolve({
+        logs: [],
+        errors: ["TimeoutError: Python execution timed out. (Execution exceeded limit)"]
+      });
+    }, currentTimeout);
+
+    worker.onmessage = (e) => {
+      clearTimeout(timer);
+      isPythonWorkerReady = true;
+      resolve(e.data);
+    };
+
+    worker.onerror = (err) => {
+      clearTimeout(timer);
+      terminatePythonWorker();
+      resolve({
+        logs: [],
+        errors: [`RuntimeError: ${err.message || String(err)}`]
+      });
+    };
+
+    worker.postMessage(code);
+  });
 }
 
 // --- Challenge Data ---
@@ -171,6 +266,12 @@ export const CodingVerse = () => {
   
   // Track input text box contents before verification
   const [inputsState, setInputsState] = useState({});
+
+  useEffect(() => {
+    return () => {
+      terminatePythonWorker();
+    };
+  }, []);
 
   // Track solved, attempted, and answers state either from Firestore (if logged in) or local state
   const answeredQuestions = user && userData
@@ -444,7 +545,7 @@ export const CodingVerse = () => {
 
     let result;
     if (lang === "javascript") {
-      result = runJavaScript(code);
+      result = await runJavaScript(code);
     } else {
       setPyodideStatus("loading");
       result = await runPython(code);
