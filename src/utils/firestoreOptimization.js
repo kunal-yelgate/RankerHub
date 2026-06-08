@@ -46,8 +46,8 @@ export class FirestoreCache {
     const cached = this.cache.get(docPath);
     if (!cached) return;
 
-    const updated = { ...cached, ...fields };
-    this.set(docPath, updated);
+    const updatedData = { ...cached.data, ...fields };
+    this.set(docPath, updatedData);
   }
 
   /**
