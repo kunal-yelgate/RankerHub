@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Search, Activity, ShieldCheck, FileText, CheckCircle, XCircle, ChevronRight, AlertTriangle, GitBranch, Info, Code2, Award } from "lucide-react";
+import { Search, Activity, ShieldCheck, FileText, CheckCircle, XCircle, AlertTriangle, GitBranch, Info, Code2, Award } from "lucide-react";
 import { Github } from "../components/ui/Icons";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 export const Auditor = () => {

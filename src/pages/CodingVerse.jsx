@@ -16,7 +16,7 @@ import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
-import { doc, updateDoc, query, collection, where, getCountFromServer, getDocs, orderBy, limit } from "firebase/firestore";
+import { doc, updateDoc, query, collection, where, getCountFromServer, getDocs } from "firebase/firestore";
 
 // --- Language Definitions ---
 const LANGUAGES = [

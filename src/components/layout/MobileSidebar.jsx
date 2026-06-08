@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   X,
+  Info,
   HelpCircle,
   Award,
   UsersRound,

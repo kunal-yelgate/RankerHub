@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Copy, Check, Download, ExternalLink } from 'lucide-react';
+import { Copy, Check, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const themes = [
