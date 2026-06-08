@@ -10,13 +10,13 @@ const URL_REGEX = /^https?:\/\/.+$/i;
 
 // Dangerous patterns that indicate XSS attempts
 const DANGEROUS_PATTERNS = [
-  /<script[\s\S]*?<\/script>/gi,
-  /<iframe[\s\S]*?<\/iframe>/gi,
-  /javascript:/gi,
-  /on(load|error|click|focus|blur|submit)\s*=/gi,
-  /<img[\s\S]*?on/gi,
-  /eval\(/gi,
-  /expression\(/gi,
+  /<script[\s\S]*?<\/script>/i,
+  /<iframe[\s\S]*?<\/iframe>/i,
+  /javascript:/i,
+  /on(load|error|click|focus|blur|submit)\s*=/i,
+  /<img[\s\S]*?on/i,
+  /eval\(/i,
+  /expression\(/i,
 ];
 
 /**
