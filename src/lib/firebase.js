@@ -98,15 +98,15 @@ export const signInWithGitHub = async (requestRepoScope = false) => {
     throw new Error("Firebase is not configured. Add the required VITE_FIREBASE_* values before signing in.");
   }
 
-  try {
-    const dynamicProvider = new GithubAuthProvider();
-    dynamicProvider.addScope('read:user');
-    dynamicProvider.addScope('user:email');
-    
-    if (requestRepoScope) {
-      dynamicProvider.addScope('repo');
-    }
+  const dynamicProvider = new GithubAuthProvider();
+  dynamicProvider.addScope('read:user');
+  dynamicProvider.addScope('user:email');
+  
+  if (requestRepoScope) {
+    dynamicProvider.addScope('repo');
+  }
 
+  try {
     const result = await signInWithPopup(auth, dynamicProvider);
     const user = result.user;
     
@@ -124,12 +124,6 @@ export const signInWithGitHub = async (requestRepoScope = false) => {
     return { user, accessToken, userData, result }; 
   } catch (error) {
     console.error("GitHub sign-in error:", error);
-    if (error.code === 'auth/account-exists-with-different-credential') {
-      throw new Error('An account already exists with the same email address.', { cause: error });
-    }
-    if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error('Sign-in popup was closed before completing.', { cause: error });
-    }
     throw error;
   }
 };

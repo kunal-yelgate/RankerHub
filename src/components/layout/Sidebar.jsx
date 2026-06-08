@@ -15,7 +15,8 @@ import {
   Info,
   HelpCircle,
   Award,
-  UsersRound
+  UsersRound,
+  Search
 } from "lucide-react";
 import { Github } from "../ui/Icons";
 import ThemeToggle from "../ui/ThemeToggle";
@@ -37,7 +38,8 @@ const iconMap = {
   Info,
   HelpCircle,
   Award,
-  UsersRound
+  UsersRound,
+  Search
 };
 
 const isLinkActive = (pathname, path) => {

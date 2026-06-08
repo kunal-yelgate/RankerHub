@@ -3,6 +3,7 @@ export const sidebarLinks = [
   { label: "CodingVerse", path: "/dashboard/codingverse", icon: "Code2" },
   { label: "GitRank", path: "/dashboard/gitrank", icon: "Github" },
   { label: "CodingOwl", path: "/dashboard/codingowl", icon: "BookOpen" },
+  { label: "OS Matchmaker", path: "/dashboard/matchmaker", icon: "Search" },
   { label: "RankHer", path: "/dashboard/rankher", icon: "Sparkles" },
   { label: "Achievements", path: "/dashboard/achievements", icon: "Award" },
   { label: "Friends", path: "/dashboard/friends", icon: "UsersRound" },

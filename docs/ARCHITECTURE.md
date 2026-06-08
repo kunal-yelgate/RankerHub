@@ -1014,3 +1014,21 @@ pm run lint\
 **Last Updated**: May 2026
 **Maintainer**: RankerHub Team
 **For Questions**: See CONTRIBUTING.md or open an issue
+
+---
+
+## OAuth Token Routing & Security
+
+### Overview
+This section describes how GitHub OAuth access tokens are handled in RankerHub,
+including storage, security boundaries, and API request flow.
+
+### Token Storage
+- After a successful GitHub OAuth login, the access token is stored in the
+  browser's `sessionStorage` — never in any server or database.
+- The following keys are used:
+  - `gh_access_token` — primary token key
+  - `gh_token_<uid>` — per-user token key
+- Token is also held in React memory via `AuthContext` to prevent XSS attacks
+
+### Architecture Diagram

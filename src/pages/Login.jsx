@@ -39,11 +39,11 @@ export const Login = () => {
 
   const handleGithubSignIn = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
 
     try {
       const activeUser = await login();
+      setIsLoading(true);
       console.log("Logged in dynamically via context:", activeUser.email);
       // Don't navigate here — let the auth state change + route guards handle
       // the redirect. The GuestRoute on /login will auto-redirect to /onboarding

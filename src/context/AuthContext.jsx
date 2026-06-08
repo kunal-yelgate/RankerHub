@@ -2,7 +2,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   onAuthStateChanged,
-  getAdditionalUserInfo
+  getAdditionalUserInfo,
+  getRedirectResult,
+  GithubAuthProvider
 } from "firebase/auth";
 import {
   doc,
@@ -10,7 +12,8 @@ import {
   setDoc,
   updateDoc,
   onSnapshot,
-  writeBatch
+  writeBatch,
+  serverTimestamp
 } from "firebase/firestore";
 import axios from "axios";
 import { auth, db, signInWithGitHub, signOutUser } from "../lib/firebase";
@@ -89,6 +92,61 @@ export const AuthProvider = ({ children }) => {
 
     let unsubscribeSnapshot = null;
 
+    // Handle redirect result if user was redirected back
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          const authUser = result.user;
+          const credential = GithubAuthProvider.credentialFromResult(result);
+          const accessToken = credential?.accessToken || null;
+          if (accessToken) {
+            setGhAccessToken(accessToken);
+          }
+
+          const additionalInfo = getAdditionalUserInfo(result);
+          const githubUsername = (additionalInfo?.username || authUser.displayName || "").trim();
+          const githubId = additionalInfo?.profile?.id || null;
+          const avatar = additionalInfo?.profile?.avatar_url || authUser.photoURL || "";
+
+          const userDocRef = doc(db, "users", authUser.uid);
+          const docSnap = await getDoc(userDocRef);
+
+          if (!docSnap.exists()) {
+            const skeletalUser = {
+              uid: authUser.uid,
+              githubUsername,
+              githubId,
+              name: authUser.displayName || githubUsername || "Developer",
+              email: authUser.email || "",
+              avatar,
+              onboardingStatus: "incomplete",
+              privateRepoSyncEnabled: true,
+              city: "",
+              streak: 0,
+              longestStreak: 0,
+              githubStreak: 0,
+              lastLogin: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              points: {
+                gitRankPoints: 0,
+                codingVersePoints: 0,
+                streakPoints: 0,
+                referralPoints: 0,
+                totalPoints: 0
+              }
+            };
+            await setDoc(userDocRef, skeletalUser);
+          } else {
+            await setDoc(userDocRef, {
+              lastLogin: new Date().toISOString(),
+            }, { merge: true });
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect sign-in resolution failure:", error);
+      });
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
@@ -137,7 +195,7 @@ export const AuthProvider = ({ children }) => {
               setLoading(false);
             }, null);
           }
-        }, (error) => {
+        }, (_error) => {
           setLoading(false);
         });
 
@@ -156,9 +214,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (requestRepoScope = true) => {
-    setLoading(true);
     try {
-      const { user: authUser, accessToken, result } = await signInWithGitHub(requestRepoScope);
+      const response = await signInWithGitHub(requestRepoScope);
+      setLoading(true);
+      if (!response) {
+        // Fallback redirect flow triggered, page will unload shortly
+        return null;
+      }
+      const { user: authUser, accessToken, result } = response;
 
       const additionalInfo = getAdditionalUserInfo(result);
       const githubUsername = (additionalInfo?.username || authUser.displayName || "").trim();
@@ -386,7 +449,13 @@ export const AuthProvider = ({ children }) => {
     if (!user || !userData?.githubUsername) return;
 
     if (userData.lastSync) {
-      const lastSyncTime = new Date(userData.lastSync).getTime();
+      const getTimestamp = (val) => {
+        if (!val) return 0;
+        if (val.toMillis) return val.toMillis();
+        if (val.seconds) return val.seconds * 1000;
+        return new Date(val).getTime();
+      };
+      const lastSyncTime = getTimestamp(userData.lastSync);
       const cooldownMs = 5 * 60 * 1000;
       if (Date.now() - lastSyncTime < cooldownMs) {
         console.log("Background GitHub sync skipped: Cooldown active.");
@@ -426,7 +495,7 @@ export const AuthProvider = ({ children }) => {
         "githubStreak": ghStats.githubStreak, // Syncs live streak to Firestore
         "points.gitRankPoints": newGitRankPoints,
         "points.totalPoints": newTotalPoints,
-        "lastSync": new Date().toISOString()
+        "lastSync": serverTimestamp()
       });
 
       // Execute atomic transaction

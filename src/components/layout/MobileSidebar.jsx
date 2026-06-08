@@ -14,7 +14,8 @@ import {
   Info,
   HelpCircle,
   Award,
-  UsersRound
+  UsersRound,
+  Search
 } from "lucide-react";
 import { Github } from "../ui/Icons";
 import { sidebarLinks } from "../../constants";
@@ -35,7 +36,8 @@ const iconMap = {
   Info,
   HelpCircle,
   Award,
-  UsersRound
+  UsersRound,
+  Search
 };
 
 const isLinkActive = (pathname, path) => {
