@@ -122,7 +122,12 @@ export const AuthProvider = ({ children }) => {
           const accessToken = credential?.accessToken || null;
           if (accessToken) {
             setGhAccessToken(accessToken);
-          }
+
+            sessionStorage.setItem(
+            `gh_token_${authUser.uid}`,
+            accessToken
+          );
+}
 
           const additionalInfo = getAdditionalUserInfo(result);
           const githubUsername = (additionalInfo?.username || authUser.displayName || "").trim();
@@ -263,10 +268,13 @@ export const AuthProvider = ({ children }) => {
       const sanitizedUserData = validation.sanitized;
       const githubId = additionalInfo?.profile?.id || null;
 
-      // Store token only in memory for current session
-      // Firebase Auth handles persistent session via secure HTTP-only cookies
-      // Token is not persisted to localStorage or sessionStorage to prevent XSS theft
+      // Store token for authenticated GitHub API requests
       setGhAccessToken(accessToken);
+
+      sessionStorage.setItem(
+        `gh_token_${authUser.uid}`,
+        accessToken
+      );
 
       const userDocRef = doc(db, "users", authUser.uid);
       const docSnap = await getDoc(userDocRef);
@@ -329,6 +337,9 @@ export const AuthProvider = ({ children }) => {
       // No need to remove from storage since token is only in memory
       // Firebase Auth session will be cleared by signOutUser()
       await signOutUser();
+      if (user?.uid) {
+        sessionStorage.removeItem(`gh_token_${user.uid}`);
+      }
       setUser(null);
       setUserData(null);
       setIsOnboarding(false);
