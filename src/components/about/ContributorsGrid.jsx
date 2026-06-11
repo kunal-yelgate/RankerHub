@@ -18,7 +18,12 @@ export const ContributorsGrid = ({ fadeInUp, staggerContainer }) => {
         }
         const data = await res.json();
         
-        const sorted = data.sort((a, b) => b.contributions - a.contributions);
+        const filtered = data.filter(contrib => {
+          const login = (contrib.login || "").toLowerCase();
+          return login !== "indresh404" && !login.includes("dependabot");
+        });
+        
+        const sorted = filtered.sort((a, b) => b.contributions - a.contributions);
         
         setContributors(sorted);
         setError(null);

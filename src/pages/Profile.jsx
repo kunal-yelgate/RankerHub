@@ -19,7 +19,8 @@ import {
   Search,
   Image,
   AlertCircle,
-  Zap
+  Zap,
+  Share2
 } from "lucide-react";
 import { Github, Linkedin, Instagram } from "../components/ui/Icons";
 import { query, collection, where, getCountFromServer, doc, getDoc, writeBatch, updateDoc, getDocs } from "firebase/firestore";
@@ -451,6 +452,49 @@ export const Profile = () => {
     } catch (err) {
       console.error('Share/copy failed', err);
       setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: 'Failed to copy referral code.', type: 'error' }]);
+    }
+  };
+
+ const handleSharePublicProfile = async () => {
+    // Construct correct public profile URL for the HashRouter
+    const usernameParam = userData?.githubUsername || username;
+    const profileUrl = `${window.location.origin}/#/profile/${usernameParam}`;
+    
+    const shareData = {
+      title: `${userData?.name || 'Developer'}'s RankerHub Profile`,
+      text: 'Check out this ranking and achievements on RankerHub!',
+      url: profileUrl
+    };
+
+    // Prefer native share on mobile/supported devices
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: 'Profile shared successfully.', type: 'success' }]);
+        return;
+      } catch (err) {
+        console.debug('Native share canceled or failed', err);
+      }
+    }
+
+    // Clipboard fallback for desktop browsers
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(profileUrl);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = profileUrl;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: 'Profile link copied to clipboard.', type: 'success' }]);
+    } catch (err) {
+      console.error('Share/copy failed', err);
+      setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: 'Failed to copy profile link.', type: 'error' }]);
     }
   };
 
@@ -1086,7 +1130,7 @@ export const Profile = () => {
 
   return (
     <div className="space-y-8">
-      <SectionHeader
+   <SectionHeader
         title={isOwnProfile ? "Developer Profile" : `${userData?.name || "Developer"}'s Profile`}
         subtitle={isOwnProfile ? "Manage your public links, view achievements, and review earned badges." : `View ${userData?.name || "this developer"}'s achievements and badges.`}
         badge="Verified Account"
@@ -1108,6 +1152,10 @@ export const Profile = () => {
             </GradientButton>
           </>
         )}
+        <GradientButton onClick={handleSharePublicProfile} variant="secondary" className="py-2.5 px-4 text-xs flex items-center gap-1.5">
+          <Share2 className="w-3.5 h-3.5" />
+          Share Profile
+        </GradientButton>
       </SectionHeader>
 
       <Card ref={profileCardRef} className="p-8 relative overflow-hidden flex flex-col md:flex-row items-center gap-8 border-slate-200/50 dark:border-slate-800/50">

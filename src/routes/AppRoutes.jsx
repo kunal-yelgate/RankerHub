@@ -153,8 +153,8 @@ export const AppRoutes = () => {
           <Route path="/dashboard/friends/followers" element={<Friends />} />
           <Route path="/dashboard/friends/following" element={<Friends />} />
           <Route path="/dashboard/profile" element={<Profile />} />
-          <Route path="/dashboard/profile/:username" element={<Profile />} />
           <Route path="/dashboard/profile/card-builder" element={<CardBuilder />} />
+          <Route path="/dashboard/profile/:username" element={<Profile />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
           <Route path="/dashboard/auditor" element={<Auditor />} />
         </Route>

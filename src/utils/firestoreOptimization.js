@@ -201,8 +201,8 @@ export class FirestoreBatchOptimizer {
         }
         await activeBatch.commit();
       } catch (error) {
-        // Re-queue failed operations
-        this.batch = operationsToCommit;
+        // Prepend failed operations so new ops queued during the async commit are preserved
+        this.batch = [...operationsToCommit, ...this.batch];
         throw error;
       }
     }
