@@ -11,6 +11,7 @@ import StatsCards from "../components/dashboard/StatsCards";
 import StreakCard from "../components/dashboard/StreakCard";
 import RankPreview from "../components/dashboard/RankPreview";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
+import RankingBreakdown from "../components/dashboard/RankingBreakdown";
 
 const githubColors = [
   "bg-slate-100 dark:bg-slate-800/40",
@@ -378,6 +379,12 @@ export const Dashboard = () => {
         <RankPreview />
         <ActivityFeed />
       </div>
+
+      <Card className="border-slate-200/50 dark:border-slate-800/50">
+        <div className="p-8">
+          <RankingBreakdown userData={userData} />
+        </div>
+      </Card>
     </div>
   );
 };

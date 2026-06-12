@@ -28,6 +28,7 @@ import { Github, Linkedin, Instagram } from "../components/ui/Icons";
 import { query, collection, where, getCountFromServer, doc, getDoc, writeBatch, updateDoc, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import RankingBreakdown from "../components/dashboard/RankingBreakdown";
 import successTick from "../assets/animations/succes_tick.json";
 import trophyAnimation from "../assets/animations/trophy.json";
 import { systemBadges } from "../constants";
@@ -1627,6 +1628,14 @@ export const Profile = () => {
         </Card>
 
       </div>
+
+      {isOwnProfile && (
+        <Card className="border-slate-200/50 dark:border-slate-800/50">
+          <div className="p-8">
+            <RankingBreakdown userData={userData} />
+          </div>
+        </Card>
+      )}
 
       <AnimatePresence>
         {isEditModalOpen && (
