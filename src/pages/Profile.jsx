@@ -427,9 +427,8 @@ export const Profile = () => {
         });
         setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: 'Shared successfully.', type: 'success' }]);
         return;
-      } catch (err) {
+      } catch {
         // user may have cancelled; fall through to clipboard fallback
-        console.debug('Native share canceled or failed', err);
       }
     }
 
@@ -475,8 +474,8 @@ export const Profile = () => {
         await navigator.share(shareData);
         setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message: 'Profile shared successfully.', type: 'success' }]);
         return;
-      } catch (err) {
-        console.debug('Native share canceled or failed', err);
+      } catch {
+        // user may have cancelled; fall through to clipboard fallback
       }
     }
 
