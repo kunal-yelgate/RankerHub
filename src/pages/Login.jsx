@@ -33,7 +33,6 @@ export const Login = () => {
     const refCode = getQueryParam("ref");
     if (refCode) {
       sessionStorage.setItem("referred_by_code", refCode.toUpperCase().trim());
-      console.log("Referral link detected and stored:", refCode.toUpperCase());
     }
   }, []);
 
@@ -42,9 +41,8 @@ export const Login = () => {
     setError("");
 
     try {
-      const activeUser = await login();
+      await login();
       setIsLoading(true);
-      console.log("Logged in dynamically via context:", activeUser.email);
       // Don't navigate here — let the auth state change + route guards handle
       // the redirect. The GuestRoute on /login will auto-redirect to /onboarding
       // or /dashboard once AuthContext resolves the user's onboarding status.

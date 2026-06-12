@@ -15,7 +15,7 @@
     "@vercel/og": "^0.11.1",
     "axios": "^1.17.0",
     "dom-to-image-more": "^2.9.0",
-    "firebase": "^12.13.0",
+    "firebase": "^12.14.0",
     "framer-motion": "^12.40.0",
     "lottie-react": "^2.4.1",
     "lucide-react": "^1.17.0",
@@ -44,5 +44,8 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.12",
     "vitest": "^4.1.8"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true
   }
 }
