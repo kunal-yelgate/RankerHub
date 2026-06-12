@@ -253,7 +253,6 @@ export const GitRank = () => {
           const cached = getFromCache(`events_${userData.githubUsername}`);
           if (cached) {
             setEvents(cached);
-            console.log("Using cached events data");
           } else {
             setEvents([]);
           }
@@ -279,7 +278,6 @@ export const GitRank = () => {
           const cached = getFromCache(`repos_${userData.githubUsername}`);
           if (cached) {
             setRepos(cached);
-            console.log("Using cached repos data");
           } else {
             setRepos([]);
           }

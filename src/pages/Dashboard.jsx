@@ -107,7 +107,6 @@ export const Dashboard = () => {
 
           if (cacheAge < fifteenMinutes || err.message.includes("API")) {
             data = cacheEntry.data;
-            console.log("Using cached heatmap data");
           }
         }
 

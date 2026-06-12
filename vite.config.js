@@ -36,6 +36,11 @@ export default defineConfig({
             if (id.includes('framer-motion')) {
               return 'vendor-motion';
             }
+
+            // Swiper (Carousel)
+            if (id.includes('swiper')) {
+              return 'vendor-swiper';
+            }
             
             // All other node_modules
             return 'vendor';

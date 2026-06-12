@@ -87,7 +87,6 @@ const checkAndUpdateStreak = async (data, docRef) => {
         hubCoins: (data.hubCoins || 0) + 10
       });
     });
-    console.log("Streak updated successfully via Thread-Safe Atomic Transaction.");
   } catch (err) {
     console.error("Failed to update streak atomically:", err);
   }
@@ -379,7 +378,6 @@ export const AuthProvider = ({ children }) => {
         activeMascot: mascotId,
         updatedAt: new Date().toISOString()
       });
-      console.log(`Equipped mascot ${mascotId}`);
     } catch (err) {
       console.error("Failed to equip mascot:", err);
       throw err;
@@ -541,7 +539,6 @@ export const AuthProvider = ({ children }) => {
       const lastSyncTime = getTimestamp(userData.lastSync);
       const cooldownMs = 5 * 60 * 1000;
       if (Date.now() - lastSyncTime < cooldownMs) {
-        console.log("Background GitHub sync skipped: Cooldown active.");
         return;
       }
     }
@@ -580,8 +577,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       await batch.commit();
-
-      console.log("Background GitHub sync completed successfully via atomic batch.");
     } catch (error) {
       console.error("Background GitHub sync failed:", error);
     }

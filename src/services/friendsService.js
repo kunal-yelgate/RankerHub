@@ -6,6 +6,7 @@ import {
   query, 
   where, 
   limit,
+  orderBy,
   documentId,
   writeBatch,
   increment
@@ -15,11 +16,15 @@ import { db } from "../lib/firebase";
 // Total number of distributed shards to handle high-concurrency increments
 const SHARD_COUNT = 5;
 
-// Asynchronously fetch real users from Firebase (capped at 50 to avoid
-// downloading the entire collection on every page load)
+// Asynchronously fetch real users from Firebase ordered by totalPoints descending
+// (capped at 50 to avoid downloading the entire collection on every page load)
 export const fetchDevelopers = async () => {
   try {
-    const q = query(collection(db, "users"), limit(50));
+    const q = query(
+      collection(db, "users"),
+      orderBy("points.totalPoints", "desc"),
+      limit(50)
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
@@ -117,7 +122,7 @@ export const toggleFollowStatus = async (currentUserId, developerId, isFollowing
 
   try {
     if (isFollowing) {
-// Unfollow
+      // Unfollow
       batch.delete(followRef);
       // Decrement the distributed shard counter atomically
       batch.set(globalConnectionsShardRef, { count: increment(-1) }, { merge: true });

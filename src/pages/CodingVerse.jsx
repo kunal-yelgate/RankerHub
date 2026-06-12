@@ -706,7 +706,6 @@ export const CodingVerse = () => {
         }
 
         await updateDoc(userRef, updatePayload);
-        console.log(`Submitted answer for ${qId}. Correct: ${isCorrect}. Arena Points: ${isCorrect ? earnedPoints : 0}. Streak Points: ${earnedStreakPoints}`);
       } catch (err) {
         console.error("Failed to update points in database:", err);
       }
