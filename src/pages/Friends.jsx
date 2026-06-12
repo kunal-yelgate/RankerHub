@@ -6,6 +6,7 @@ import Card from "../components/ui/Card";
 import DeveloperCard from "../components/friends/DeveloperCard";
 import Loader from "../components/ui/Loader";
 import { useAuth } from "../context/AuthContext";
+import collegesList from "../data/colleges.json";
 import {
   fetchDevelopers,
   hydrateConnections,
@@ -45,6 +46,7 @@ export const Friends = () => {
     following: [],
     suggested: []
   });
+  const [selectedCollege, setSelectedCollege] = useState("All");
 
   // 1. Initial Load & Setup Listeners
   useEffect(() => {
@@ -119,6 +121,7 @@ export const Friends = () => {
         username: userData?.githubUsername || currentUser.uid,
         avatar: userData?.avatar || userData?.photoURL || currentUser.photoURL || `https://ui-avatars.com/api/?name=You&background=random`,
         role: userData?.role || "Developer",
+        college: userData?.college || "Unknown",
         bio: userData?.bio || "That's you!",
         tags: userData?.skills || ["Developer"],
         mutualFriends: 0,
@@ -133,6 +136,12 @@ export const Friends = () => {
   }, [connections.followers, connections.following, currentUser, userData]);
 
   const activeDevelopers = activeTab === "leaderboard" ? leaderboardStandings : connections[activeTab] || [];
+  const filteredDevelopers = React.useMemo(() => {
+    return activeDevelopers.filter(dev => {
+      if (selectedCollege === "All") return true;
+      return dev.college === selectedCollege;
+    });
+  }, [activeDevelopers, selectedCollege]);
   
   const tabCopy = {
     friends: "Developers who follow you back and collaborate with you across RankerHub.",
@@ -211,7 +220,7 @@ export const Friends = () => {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white my-0 capitalize">
                 {activeTab}
@@ -220,14 +229,27 @@ export const Friends = () => {
                 {tabCopy[activeTab]}
               </p>
             </div>
-            <span className="text-xs font-bold text-slate-400 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 px-3 py-1.5 rounded-full self-start sm:self-auto">
-              {activeDevelopers.length} developers
-            </span>
+            
+            <div className="flex flex-row items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
+              <select
+                value={selectedCollege}
+                onChange={(e) => setSelectedCollege(e.target.value)}
+                className="w-full sm:w-48 px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-colors"
+              >
+                <option value="All">All Colleges</option>
+                {collegesList.map(college => (
+                  <option key={college} value={college}>{college}</option>
+                ))}
+              </select>
+              <span className="text-xs font-bold text-slate-400 bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 px-3 py-1.5 rounded-full whitespace-nowrap">
+                {filteredDevelopers.length} devs
+              </span>
+            </div>
           </div>
 
-          {activeDevelopers.length > 0 ? (
+          {filteredDevelopers.length > 0 ? (
             <div className={activeTab === "leaderboard" ? "space-y-3" : "grid grid-cols-1 lg:grid-cols-2 gap-4"}>
-              {activeDevelopers.map((developer, index) => (
+              {filteredDevelopers.map((developer, index) => (
                 <div key={developer.id} className={activeTab === "leaderboard" ? "flex items-stretch gap-3" : ""}>
                   {activeTab === "leaderboard" && (
                     <div className={`flex-shrink-0 w-10 flex flex-col items-center justify-center rounded-xl font-black text-sm ${
