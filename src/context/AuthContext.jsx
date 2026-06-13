@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { githubFetch, getRateLimitMessage } from "../utils/githubRateLimit";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   onAuthStateChanged,
@@ -30,14 +31,12 @@ const checkAndUpdateStreak = async (data, docRef) => {
   const now = new Date();
   const lastLoginDate = data.lastLogin ? new Date(data.lastLogin) : null;
 
-  //  GUARD 1 (Client-side): 
   if (lastLoginDate && lastLoginDate.toDateString() === now.toDateString()) {
     return;
   }
 
   try {
     await runTransaction(db, async (transaction) => {
-      //  Read absolute latest data from server
       const userDoc = await transaction.get(docRef);
       if (!userDoc.exists()) return;
 
@@ -45,7 +44,6 @@ const checkAndUpdateStreak = async (data, docRef) => {
       const currentNow = new Date();
       const latestLastLogin = latestData.lastLogin ? new Date(latestData.lastLogin) : null;
 
-      //  GUARD 2 (Server-side Atomic Check):
       if (latestLastLogin && latestLastLogin.toDateString() === currentNow.toDateString()) {
         return;
       }
@@ -70,14 +68,13 @@ const checkAndUpdateStreak = async (data, docRef) => {
         newStreak = 1;
       }
 
-      const newTotalPoints = (latestData.points?.gitRankPoints || 0) + 
-                             (latestData.points?.referralPoints || 0) + 
-                             (latestData.points?.codingVersePoints || 0) + 
+      const newTotalPoints = (latestData.points?.gitRankPoints || 0) +
+                             (latestData.points?.referralPoints || 0) +
+                             (latestData.points?.codingVersePoints || 0) +
                              newStreakPoints;
-                             
+
       const newLongestStreak = Math.max(latestData.longestStreak || 0, newStreak);
 
-      // 📝 Write atomic update
       transaction.update(docRef, {
         streak: newStreak,
         longestStreak: newLongestStreak,
@@ -97,8 +94,6 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(auth ? true : false);
   const [isOnboarding, setIsOnboarding] = useState(false);
-  // GitHub OAuth access token stored only in memory, not persisted to storage
-  // Firebase Auth handles session persistence securely via HTTP-only cookies
   const [ghAccessToken, setGhAccessToken] = useState(null);
 
   useEffect(() => {
@@ -176,7 +171,7 @@ export const AuthProvider = ({ children }) => {
         setUser(currentUser);
 
         const userDocRef = doc(db, "users", currentUser.uid);
-        
+
         const docPath = `users/${currentUser.uid}`;
         const cachedData = userDataCache.get(docPath);
         if (cachedData) {
@@ -228,9 +223,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await signInWithGitHub(requestRepoScope);
       setLoading(true);
-      if (!response) {
-        return null;
-      }
+      if (!response) return null;
+
       const { user: authUser, accessToken, result } = response;
 
       const additionalInfo = getAdditionalUserInfo(result);
@@ -258,7 +252,6 @@ export const AuthProvider = ({ children }) => {
       const today = new Date();
 
       if (!docSnap.exists()) {
-        // First login ever — initialize user document with base streak
         const skeletalUser = {
           uid: authUser.uid,
           githubUsername: sanitizedUserData.githubUsername,
@@ -289,10 +282,6 @@ export const AuthProvider = ({ children }) => {
         };
         await setDoc(userDocRef, skeletalUser);
       } else {
-        // Existing user: only update lastLogin and repo scope here.
-        // Streak calculation is handled exclusively by checkAndUpdateStreak()
-        // via an atomic runTransaction triggered by the onSnapshot listener.
-        // Duplicating streak logic here caused double streak points on login day.
         await setDoc(userDocRef, {
           lastLogin: today.toISOString(),
           ...(requestRepoScope && { privateRepoSyncEnabled: true })
@@ -330,12 +319,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const userRef = doc(db, "users", user.uid);
-
       await runTransaction(db, async (transaction) => {
-        // Read live Firestore data inside the transaction to prevent stale
-        // client-side state from being used as the source of truth.
-        // This guards against concurrent purchases from multiple tabs or
-        // devices spending the same hubCoins balance simultaneously.
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists()) throw new Error("User document not found");
 
@@ -343,13 +327,8 @@ export const AuthProvider = ({ children }) => {
         const liveCoins = liveData.hubCoins ?? 0;
         const liveInventory = liveData.inventory || ["oliver"];
 
-        if (liveCoins < price) {
-          throw new Error("Insufficient HubCoins");
-        }
-
-        if (liveInventory.includes(mascotId)) {
-          throw new Error("Mascot already owned");
-        }
+        if (liveCoins < price) throw new Error("Insufficient HubCoins");
+        if (liveInventory.includes(mascotId)) throw new Error("Mascot already owned");
 
         transaction.update(userRef, {
           hubCoins: liveCoins - price,
@@ -357,8 +336,6 @@ export const AuthProvider = ({ children }) => {
           updatedAt: new Date().toISOString()
         });
       });
-
-      console.log(`Purchased mascot ${mascotId}`);
     } catch (err) {
       console.error("Failed to purchase mascot:", err);
       throw err;
@@ -368,10 +345,8 @@ export const AuthProvider = ({ children }) => {
   const equipMascot = async (mascotId) => {
     if (!user || !userData) throw new Error("Not authenticated");
     const currentInventory = userData.inventory || ["oliver"];
-    if (!currentInventory.includes(mascotId)) {
-      throw new Error("Mascot not owned");
-    }
-    
+    if (!currentInventory.includes(mascotId)) throw new Error("Mascot not owned");
+
     try {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
@@ -403,25 +378,27 @@ export const AuthProvider = ({ children }) => {
     const headers = token ? { Authorization: `token ${token}` } : {};
 
     try {
-      const profileRes = await axios.get(`https://api.github.com/users/${encodedUsername}`, { headers });
-      const publicRepos = profileRes.data.public_repos || 0;
-      const followers = profileRes.data.followers || 0;
-      
+      const { data: profileData, rateLimitError: profileRateLimit } = await githubFetch(() =>
+        axios.get(`https://api.github.com/users/${encodedUsername}`, { headers })
+      );
+      if (profileRateLimit) throw new Error(profileRateLimit);
+      const publicRepos = profileData.public_repos || 0;
+      const followers = profileData.followers || 0;
+
       let stars = 0;
       let primaryLanguage = "JavaScript";
       try {
-        const reposRes = await axios.get(`https://api.github.com/users/${encodedUsername}/repos?per_page=100&type=owner`, { headers });
-        stars = reposRes.data.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
-        
-        const langCounts = {};
-        reposRes.data.forEach(r => {
-          if (r.language) {
-            langCounts[r.language] = (langCounts[r.language] || 0) + 1;
-          }
-        });
-        const sortedLangs = Object.keys(langCounts).sort((a, b) => langCounts[b] - langCounts[a]);
-        if (sortedLangs.length > 0) {
-          primaryLanguage = sortedLangs[0];
+        const { data: reposData, rateLimitError: reposRateLimit } = await githubFetch(() =>
+          axios.get(`https://api.github.com/users/${encodedUsername}/repos?per_page=100&type=owner`, { headers })
+        );
+        if (!reposRateLimit && reposData) {
+          stars = reposData.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
+          const langCounts = {};
+          reposData.forEach(r => {
+            if (r.language) langCounts[r.language] = (langCounts[r.language] || 0) + 1;
+          });
+          const sortedLangs = Object.keys(langCounts).sort((a, b) => langCounts[b] - langCounts[a]);
+          if (sortedLangs.length > 0) primaryLanguage = sortedLangs[0];
         }
       } catch (err) {
         console.warn("Stars/Language retrieval warning, defaulting:", err);
@@ -429,67 +406,66 @@ export const AuthProvider = ({ children }) => {
 
       let commits = 0;
       try {
-        const commitsRes = await axios.get(`https://api.github.com/search/commits?q=author:${encodedUsername}`, { headers });
-        commits = commitsRes.data.total_count || 0;
+        const { data: commitsData, rateLimitError: commitsRateLimit } = await githubFetch(() =>
+          axios.get(`https://api.github.com/search/commits?q=author:${encodedUsername}`, { headers })
+        );
+        if (commitsRateLimit) console.warn(commitsRateLimit);
+        else commits = commitsData?.total_count || 0;
       } catch (err) {
-        console.warn("Commits retrieval failed; score will be incomplete until next refresh:", err);
-        commits = 0;
+        console.warn("Commits retrieval failed:", err);
       }
 
       let prs = 0;
       try {
-        const prsRes = await axios.get(`https://api.github.com/search/issues?q=author:${encodedUsername}+type:pr`, { headers });
-        prs = prsRes.data.total_count || 0;
+        const { data: prsData, rateLimitError: prsRateLimit } = await githubFetch(() =>
+          axios.get(`https://api.github.com/search/issues?q=author:${encodedUsername}+type:pr`, { headers })
+        );
+        if (prsRateLimit) console.warn(prsRateLimit);
+        else prs = prsData?.total_count || 0;
       } catch (err) {
-        console.warn("PRs retrieval failed; score will be incomplete until next refresh:", err);
-        prs = 0;
+        console.warn("PRs retrieval failed:", err);
       }
 
       let reviews = 0;
       try {
-        const reviewsRes = await axios.get(`https://api.github.com/search/issues?q=reviewed-by:${encodedUsername}`, { headers });
-        reviews = reviewsRes.data.total_count || 0;
+        const { data: reviewsData, rateLimitError: reviewsRateLimit } = await githubFetch(() =>
+          axios.get(`https://api.github.com/search/issues?q=reviewed-by:${encodedUsername}`, { headers })
+        );
+        if (reviewsRateLimit) console.warn(reviewsRateLimit);
+        else reviews = reviewsData?.total_count || 0;
       } catch (err) {
-        console.warn("Reviews retrieval failed; score will be incomplete until next refresh:", err);
-        reviews = 0;
+        console.warn("Reviews retrieval failed:", err);
       }
 
       let githubStreak = 0;
       try {
-        const eventsRes = await axios.get(`https://api.github.com/users/${username}/events?per_page=100`, { headers });
-        const events = eventsRes.data;
-        
-        const eventDates = new Set(
-          events
-            .filter(e => e.created_at)
-            .map(e => e.created_at.split('T')[0])
+        const { data: eventsData, rateLimitError: eventsRateLimit } = await githubFetch(() =>
+          axios.get(`https://api.github.com/users/${username}/events?per_page=100`, { headers })
         );
-        
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-        let dateToCheck = new Date(today);
-        
-        if (eventDates.has(todayStr)) {
-          // Streak is active today
-        } else if (eventDates.has(yesterdayStr)) {
-          dateToCheck = yesterday;
-        } else {
-          dateToCheck = null;
-        }
-
-        if (dateToCheck) {
-          while (true) {
-            const checkStr = dateToCheck.toISOString().split('T')[0];
-            if (eventDates.has(checkStr)) {
-              githubStreak++;
-              dateToCheck.setDate(dateToCheck.getDate() - 1);
-            } else {
-              break;
+        if (!eventsRateLimit && eventsData) {
+          const eventDates = new Set(
+            eventsData.filter(e => e.created_at).map(e => e.created_at.split('T')[0])
+          );
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          let dateToCheck = new Date(today);
+          if (eventDates.has(todayStr)) {
+            // active today
+          } else if (eventDates.has(yesterdayStr)) {
+            dateToCheck = yesterday;
+          } else {
+            dateToCheck = null;
+          }
+          if (dateToCheck) {
+            while (true) {
+              const checkStr = dateToCheck.toISOString().split('T')[0];
+              if (eventDates.has(checkStr)) {
+                githubStreak++;
+                dateToCheck.setDate(dateToCheck.getDate() - 1);
+              } else break;
             }
           }
         }
@@ -499,30 +475,16 @@ export const AuthProvider = ({ children }) => {
 
       const gitRankPoints = (commits * 2) + (prs * 5) + (reviews * 10) + (githubStreak * 10);
 
-      return {
-        commits,
-        prs,
-        reviews,
-        publicRepos,
-        stars,
-        followers,
-        primaryLanguage,
-        githubStreak,
-        gitRankPoints
-      };
+      return { commits, prs, reviews, publicRepos, stars, followers, primaryLanguage, githubStreak, gitRankPoints };
+
     } catch (error) {
+      const rateLimitMsg = getRateLimitMessage(error);
+      if (rateLimitMsg) {
+        console.warn("Rate limit hit:", rateLimitMsg);
+        throw new Error(rateLimitMsg);
+      }
       console.error("Error executing GitHub stats fetcher snapshot:", error);
-      return {
-        commits: 0,
-        prs: 0,
-        reviews: 0,
-        publicRepos: 0,
-        stars: 0,
-        followers: 0,
-        primaryLanguage: "JavaScript",
-        githubStreak: 0,
-        gitRankPoints: 0
-      };
+      return { commits: 0, prs: 0, reviews: 0, publicRepos: 0, stars: 0, followers: 0, primaryLanguage: "JavaScript", githubStreak: 0, gitRankPoints: 0 };
     }
   };
 
@@ -538,9 +500,7 @@ export const AuthProvider = ({ children }) => {
       };
       const lastSyncTime = getTimestamp(userData.lastSync);
       const cooldownMs = 5 * 60 * 1000;
-      if (Date.now() - lastSyncTime < cooldownMs) {
-        return;
-      }
+      if (Date.now() - lastSyncTime < cooldownMs) return;
     }
 
     try {
@@ -548,9 +508,7 @@ export const AuthProvider = ({ children }) => {
       const userRef = doc(db, "users", user.uid);
 
       const userDoc = await getDoc(userRef);
-      if (!userDoc.exists()) {
-        throw new Error("User document does not exist in Firestore!");
-      }
+      if (!userDoc.exists()) throw new Error("User document does not exist in Firestore!");
 
       const liveData = userDoc.data();
       const currentReferralPoints = liveData.points?.referralPoints || 0;
@@ -561,7 +519,6 @@ export const AuthProvider = ({ children }) => {
       const newTotalPoints = newGitRankPoints + currentReferralPoints + currentCodingVersePoints + currentStreakPoints;
 
       const batch = writeBatch(db);
-      
       batch.update(userRef, {
         "githubStats.commits": ghStats.commits,
         "githubStats.prs": ghStats.prs,
@@ -578,6 +535,11 @@ export const AuthProvider = ({ children }) => {
 
       await batch.commit();
     } catch (error) {
+      const rateLimitMsg = getRateLimitMessage(error);
+      if (rateLimitMsg) {
+        console.warn("Sync blocked by rate limit:", rateLimitMsg);
+        throw new Error(rateLimitMsg);
+      }
       console.error("Background GitHub sync failed:", error);
     }
   };
