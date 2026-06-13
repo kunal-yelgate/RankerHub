@@ -70,7 +70,7 @@ const STATIC_FALLBACK_ISSUES = [
 ];
 
 export const Matchmaker = () => {
-  const { user } = useAuth();
+  const { user, ghAccessToken } = useAuth();
 
   // Selected State
   const [selectedLanguage, setSelectedLanguage] = useState("javascript");
@@ -102,8 +102,7 @@ export const Matchmaker = () => {
     setRateLimited(false);
 
     // Retrieve authentication token if available
-    const token = sessionStorage.getItem(`gh_token_${user?.uid}`);
-    const headers = token ? { Authorization: `token ${token}` } : {};
+    const headers = ghAccessToken ? { Authorization: `token ${ghAccessToken}` } : {};
 
     // Get current parameters
     const difficultyObj = DIFFICULTIES.find(d => d.id === selectedDifficulty) || DIFFICULTIES[0];
@@ -161,7 +160,7 @@ export const Matchmaker = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedLanguage, selectedDifficulty, searchQuery, user]);
+  }, [selectedLanguage, selectedDifficulty, searchQuery, user, ghAccessToken]);
 
   // Load issues on initial component mounting
   useEffect(() => {
