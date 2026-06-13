@@ -80,7 +80,18 @@ service cloud.firestore {
             request.resource.data.points.totalPoints > resource.data.points.totalPoints && 
             request.resource.data.points.totalPoints - resource.data.points.totalPoints <= 200 &&
             // HubCoins can increase by at most the same amount as points (e.g. +10 HubCoins for +100 XP)
-            (request.resource.data.hubCoins != null ? request.resource.data.hubCoins : 500) - (resource.data.hubCoins != null ? resource.data.hubCoins : 500) <= (request.resource.data.points.totalPoints - resource.data.points.totalPoints)
+            (request.resource.data.hubCoins != null ? request.resource.data.hubCoins : 500) - (resource.data.hubCoins != null ? resource.data.hubCoins : 500) <= (request.resource.data.points.totalPoints - resource.data.points.totalPoints) &&
+            // SECURITY FIX: Ensure only allowed progression fields are modified
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'points',
+              'hubCoins',
+              'solvedCodingVerseQuestions',
+              'attemptedCodingVerseQuestions',
+              'codingVerseAnswers',
+              'codingVerseStreak',
+              'lastCodingVerseSolveDate',
+              'lastAuditReward'
+            ])
           ) ||
           // GitHub stats formula sync
           (
