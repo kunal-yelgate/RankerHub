@@ -14,7 +14,7 @@
     "@paper-design/shaders": "^0.0.76",
     "@vercel/og": "^0.11.1",
     "axios": "^1.17.0",
-    "dom-to-image-more": "^2.9.0",
+    "dom-to-image-more": "^3.10.0",
     "firebase": "^12.14.0",
     "framer-motion": "^12.40.0",
     "lottie-react": "^2.4.1",
