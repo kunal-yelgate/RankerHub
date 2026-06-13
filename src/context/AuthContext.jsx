@@ -84,10 +84,9 @@ const checkAndUpdateStreak = async (data, docRef) => {
         lastLogin: currentNow.toISOString(),
         "points.streakPoints": newStreakPoints,
         "points.totalPoints": newTotalPoints,
-        hubCoins: (data.hubCoins || 0) + 10
+        hubCoins: (latestData.hubCoins || 0) + 10
       });
     });
-    console.log("Streak updated successfully via Thread-Safe Atomic Transaction.");
   } catch (err) {
     console.error("Failed to update streak atomically:", err);
   }
@@ -103,9 +102,6 @@ export const AuthProvider = ({ children }) => {
   const [ghAccessToken, setGhAccessToken] = useState(null);
 
   useEffect(() => {
-    // If Firebase wasn't configured (app === null), `auth` will be null.
-    // Avoid calling `onAuthStateChanged` with a null auth instance which
-    // causes a runtime error in the browser bundle.
     if (!auth) {
       console.warn("Firebase auth is not initialized; auth listener skipped.");
       return undefined;
@@ -113,7 +109,6 @@ export const AuthProvider = ({ children }) => {
 
     let unsubscribeSnapshot = null;
 
-    // Handle redirect result if user was redirected back
     getRedirectResult(auth)
       .then(async (result) => {
         if (result) {
@@ -122,6 +117,7 @@ export const AuthProvider = ({ children }) => {
           const accessToken = credential?.accessToken || null;
           if (accessToken) {
             setGhAccessToken(accessToken);
+            sessionStorage.setItem(`gh_token_${authUser.uid}`, accessToken);
           }
 
           const additionalInfo = getAdditionalUserInfo(result);
@@ -178,13 +174,9 @@ export const AuthProvider = ({ children }) => {
 
       if (currentUser) {
         setUser(currentUser);
-        // Token is only available during the current session in memory
-        // It will be null on page refresh, requiring fresh authentication
-        // This is the secure default behavior
 
         const userDocRef = doc(db, "users", currentUser.uid);
         
-        // Try to load from cache first to reduce initial load time
         const docPath = `users/${currentUser.uid}`;
         const cachedData = userDataCache.get(docPath);
         if (cachedData) {
@@ -193,22 +185,18 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
         }
 
-        // Subscribe to real-time updates with debouncing to reduce re-renders
         unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
 
-            // Update cache immediately for fast subsequent reads
             userDataCache.set(docPath, data);
 
-            // Debounce state updates to prevent excessive re-renders from rapid changes
             listenerOptimizer.debounce(currentUser.uid, (userData) => {
               setUserData(userData);
               setIsOnboarding(userData.onboardingStatus === "incomplete");
               setLoading(false);
             }, data);
 
-            // Update streak asynchronously
             checkAndUpdateStreak(data, userDocRef);
           } else {
             userDataCache.delete(docPath);
@@ -241,7 +229,6 @@ export const AuthProvider = ({ children }) => {
       const response = await signInWithGitHub(requestRepoScope);
       setLoading(true);
       if (!response) {
-        // Fallback redirect flow triggered, page will unload shortly
         return null;
       }
       const { user: authUser, accessToken, result } = response;
@@ -254,7 +241,6 @@ export const AuthProvider = ({ children }) => {
         avatar: additionalInfo?.profile?.avatar_url || authUser.photoURL || ""
       };
 
-      // Validate and sanitize all user inputs to prevent XSS and data corruption
       const validation = validateUserData(rawUserData);
       if (!validation.isValid) {
         console.warn("User data validation warnings:", validation.errors);
@@ -263,21 +249,16 @@ export const AuthProvider = ({ children }) => {
       const sanitizedUserData = validation.sanitized;
       const githubId = additionalInfo?.profile?.id || null;
 
-      // Store token only in memory for current session
-      // Firebase Auth handles persistent session via secure HTTP-only cookies
-      // Token is not persisted to localStorage or sessionStorage to prevent XSS theft
       setGhAccessToken(accessToken);
+      sessionStorage.setItem(`gh_token_${authUser.uid}`, accessToken);
 
       const userDocRef = doc(db, "users", authUser.uid);
       const docSnap = await getDoc(userDocRef);
 
-      // Issue #191: Strict Timezone-Agnostic UTC Streak Calculation
       const today = new Date();
-      const todayUTCStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-      const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
 
       if (!docSnap.exists()) {
-        // First login ever
+        // First login ever — initialize user document with base streak
         const skeletalUser = {
           uid: authUser.uid,
           githubUsername: sanitizedUserData.githubUsername,
@@ -288,7 +269,7 @@ export const AuthProvider = ({ children }) => {
           onboardingStatus: "incomplete",
           privateRepoSyncEnabled: requestRepoScope,
           city: "",
-          streak: 1, // Start streak
+          streak: 1,
           longestStreak: 0,
           githubStreak: 0,
           lastLogin: today.toISOString(),
@@ -296,7 +277,7 @@ export const AuthProvider = ({ children }) => {
           points: {
             gitRankPoints: 0,
             codingVersePoints: 0,
-            streakPoints: 10, // Base points for 1st day streak
+            streakPoints: 10,
             referralPoints: 0,
             auditorPoints: 0,
             totalPoints: 10
@@ -308,44 +289,12 @@ export const AuthProvider = ({ children }) => {
         };
         await setDoc(userDocRef, skeletalUser);
       } else {
-        // Existing user: Calculate streak safely
-        const existingData = docSnap.data();
-        let newStreak = existingData.streak || 0;
-        let newStreakPoints = existingData.points?.streakPoints || 0;
-        let newTotalPoints = existingData.points?.totalPoints || 0;
-
-        const lastLoginDate = existingData.lastLogin ? new Date(existingData.lastLogin) : null;
-
-        if (lastLoginDate) {
-          const lastLoginUTCStr = lastLoginDate.toISOString().split('T')[0];
-
-          // Only process streak logic if it's a completely new UTC day
-          if (todayUTCStr !== lastLoginUTCStr) {
-            const lastUTC = Date.UTC(lastLoginDate.getUTCFullYear(), lastLoginDate.getUTCMonth(), lastLoginDate.getUTCDate());
-            const diffDays = Math.floor((todayUTC - lastUTC) / (1000 * 60 * 60 * 24));
-
-            if (diffDays === 1) {
-              newStreak += 1; // Perfect continuation
-            } else if (diffDays > 1) {
-              newStreak = 1; // Streak broken, restart
-            }
-
-            // Award 10 points for the new active day
-            newStreakPoints += 10;
-            newTotalPoints += 10;
-          }
-        } else {
-          // Fallback if lastLogin was somehow missing
-          newStreak = 1;
-          newStreakPoints += 10;
-          newTotalPoints += 10;
-        }
-
+        // Existing user: only update lastLogin and repo scope here.
+        // Streak calculation is handled exclusively by checkAndUpdateStreak()
+        // via an atomic runTransaction triggered by the onSnapshot listener.
+        // Duplicating streak logic here caused double streak points on login day.
         await setDoc(userDocRef, {
           lastLogin: today.toISOString(),
-          streak: newStreak,
-          "points.streakPoints": newStreakPoints,
-          "points.totalPoints": newTotalPoints,
           ...(requestRepoScope && { privateRepoSyncEnabled: true })
         }, { merge: true });
       }
@@ -361,9 +310,10 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     try {
-      // No need to remove from storage since token is only in memory
-      // Firebase Auth session will be cleared by signOutUser()
       await signOutUser();
+      if (user?.uid) {
+        sessionStorage.removeItem(`gh_token_${user.uid}`);
+      }
       setUser(null);
       setUserData(null);
       setIsOnboarding(false);
@@ -377,22 +327,37 @@ export const AuthProvider = ({ children }) => {
 
   const purchaseMascot = async (mascotId, price) => {
     if (!user || !userData) throw new Error("Not authenticated");
-    const currentCoins = userData.hubCoins ?? 500;
-    if (currentCoins < price) {
-      throw new Error("Insufficient HubCoins");
-    }
-    const currentInventory = userData.inventory || ["oliver"];
-    if (currentInventory.includes(mascotId)) {
-      throw new Error("Mascot already owned");
-    }
-    
+
     try {
       const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        hubCoins: currentCoins - price,
-        inventory: [...currentInventory, mascotId],
-        updatedAt: new Date().toISOString() // needed for firestore rules sometimes
+
+      await runTransaction(db, async (transaction) => {
+        // Read live Firestore data inside the transaction to prevent stale
+        // client-side state from being used as the source of truth.
+        // This guards against concurrent purchases from multiple tabs or
+        // devices spending the same hubCoins balance simultaneously.
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) throw new Error("User document not found");
+
+        const liveData = userDoc.data();
+        const liveCoins = liveData.hubCoins ?? 0;
+        const liveInventory = liveData.inventory || ["oliver"];
+
+        if (liveCoins < price) {
+          throw new Error("Insufficient HubCoins");
+        }
+
+        if (liveInventory.includes(mascotId)) {
+          throw new Error("Mascot already owned");
+        }
+
+        transaction.update(userRef, {
+          hubCoins: liveCoins - price,
+          inventory: [...liveInventory, mascotId],
+          updatedAt: new Date().toISOString()
+        });
       });
+
       console.log(`Purchased mascot ${mascotId}`);
     } catch (err) {
       console.error("Failed to purchase mascot:", err);
@@ -413,7 +378,6 @@ export const AuthProvider = ({ children }) => {
         activeMascot: mascotId,
         updatedAt: new Date().toISOString()
       });
-      console.log(`Equipped mascot ${mascotId}`);
     } catch (err) {
       console.error("Failed to equip mascot:", err);
       throw err;
@@ -421,8 +385,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const fetchGitHubStats = async (uid, username) => {
-    // Validate GitHub username per GitHub's rules: 1-39 characters,
-    // alphanumeric + hyphens only, no leading/trailing hyphens.
     if (!username || typeof username !== "string") {
       throw new Error("GitHub username is required and must be a string.");
     }
@@ -436,10 +398,7 @@ export const AuthProvider = ({ children }) => {
       throw new Error("GitHub username can only contain letters, digits, and hyphens, and cannot start or end with a hyphen.");
     }
 
-    // URL-encode the username to prevent injection attacks, though axios should
-    // handle this automatically.
     const encodedUsername = encodeURIComponent(trimmedUsername);
-
     const token = ghAccessToken;
     const headers = token ? { Authorization: `token ${token}` } : {};
 
@@ -495,19 +454,8 @@ export const AuthProvider = ({ children }) => {
         reviews = 0;
       }
 
-      // --- NEW GITHUB LIVE STREAK CALCULATION LOGIC ---
       let githubStreak = 0;
       try {
-        const eventsRes = await axios.get(`https://api.github.com/users/${username}/events?per_page=100`, { headers });
-        const events = eventsRes.data;
-        
-        // Extract unique dates of events (YYYY-MM-DD format)
-        const eventDates = new Set(
-          events
-            .filter(e => e.created_at)
-            .map(e => e.created_at.split('T')[0])
-        );
-        
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
         
@@ -515,15 +463,47 @@ export const AuthProvider = ({ children }) => {
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
+        const eventDates = new Set();
+        let eventsUrl = `https://api.github.com/users/${username}/events?per_page=100`;
+
+        while (eventsUrl) {
+          const eventsRes = await axios.get(eventsUrl, { headers });
+          const events = eventsRes.data;
+          
+          if (!events || events.length === 0) {
+            break;
+          }
+
+          let oldestEventDateStr = null;
+
+          events.forEach(e => {
+            if (e.created_at) {
+              const dateStr = e.created_at.split('T')[0];
+              eventDates.add(dateStr);
+              oldestEventDateStr = dateStr;
+            }
+          });
+
+          if (oldestEventDateStr && oldestEventDateStr < yesterdayStr) {
+            break;
+          }
+
+          const linkHeader = eventsRes.headers?.link || eventsRes.headers?.Link;
+          if (linkHeader) {
+            const nextLinkMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+            eventsUrl = nextLinkMatch ? nextLinkMatch[1] : null;
+          } else {
+            eventsUrl = null;
+          }
+        }
+
         let dateToCheck = new Date(today);
         
         if (eventDates.has(todayStr)) {
           // Streak is active today
         } else if (eventDates.has(yesterdayStr)) {
-          // Streak was active yesterday, count from yesterday
           dateToCheck = yesterday;
         } else {
-          // No active streak
           dateToCheck = null;
         }
 
@@ -534,7 +514,7 @@ export const AuthProvider = ({ children }) => {
               githubStreak++;
               dateToCheck.setDate(dateToCheck.getDate() - 1);
             } else {
-              break; // Streak broken
+              break;
             }
           }
         }
@@ -542,7 +522,6 @@ export const AuthProvider = ({ children }) => {
         console.warn("GitHub events retrieval failed for streak:", err);
       }
 
-      // Add points for each day of the active GitHub streak (+10 XP per day)
       const gitRankPoints = (commits * 2) + (prs * 5) + (reviews * 10) + (githubStreak * 10);
 
       return {
@@ -576,16 +555,15 @@ export const AuthProvider = ({ children }) => {
     if (!user || !userData?.githubUsername) return;
 
     if (userData.lastSync) {
-const getTimestamp = (val) => {
+      const getTimestamp = (val) => {
         if (!val) return 0;
         if (val.toMillis) return val.toMillis();
         if (val.seconds) return val.seconds * 1000;
         return new Date(val).getTime();
       };
       const lastSyncTime = getTimestamp(userData.lastSync);
-      const cooldownMs = 5 * 60 * 1000; // 5 minutes
+      const cooldownMs = 5 * 60 * 1000;
       if (Date.now() - lastSyncTime < cooldownMs) {
-        console.log("Background GitHub sync skipped: Cooldown active.");
         return;
       }
     }
@@ -594,7 +572,6 @@ const getTimestamp = (val) => {
       const ghStats = await fetchGitHubStats(user.uid, userData.githubUsername);
       const userRef = doc(db, "users", user.uid);
 
-      // Phase 1: Retrieve Live Data
       const userDoc = await getDoc(userRef);
       if (!userDoc.exists()) {
         throw new Error("User document does not exist in Firestore!");
@@ -608,8 +585,6 @@ const getTimestamp = (val) => {
       const newGitRankPoints = ghStats.gitRankPoints;
       const newTotalPoints = newGitRankPoints + currentReferralPoints + currentCodingVersePoints + currentStreakPoints;
 
-      // Retained the Atomic Batch Writes (Issue #193)
-      // Phase 2: Issue Atomic Batch Write
       const batch = writeBatch(db);
       
       batch.update(userRef, {
@@ -620,16 +595,13 @@ const getTimestamp = (val) => {
         "githubStats.stars": ghStats.stars,
         "githubStats.followers": ghStats.followers,
         "githubStats.primaryLanguage": ghStats.primaryLanguage,
-        "githubStreak": ghStats.githubStreak, // Syncs live streak to Firestore
+        "githubStreak": ghStats.githubStreak,
         "points.gitRankPoints": newGitRankPoints,
         "points.totalPoints": newTotalPoints,
         "lastSync": serverTimestamp()
       });
 
-      // Execute atomic transaction
       await batch.commit();
-
-      console.log("Background GitHub sync completed successfully via atomic batch.");
     } catch (error) {
       console.error("Background GitHub sync failed:", error);
     }

@@ -143,6 +143,7 @@ export const getSearchSuggestions = (users, query) => {
         });
       }
     }
+
     if (username.toLowerCase().startsWith(searchTerm)) {
       const key = `username:${username}`;
       if (!suggestionsMap.has(key)) {
@@ -153,6 +154,7 @@ export const getSearchSuggestions = (users, query) => {
         });
       }
     }
+
     if (user.language && user.language.toLowerCase().includes(searchTerm)) {
       const key = `language:${user.language}`;
       if (!suggestionsMap.has(key)) {
@@ -160,6 +162,18 @@ export const getSearchSuggestions = (users, query) => {
           type: "language",
           value: user.language,
           display: `Language: ${user.language}`
+        });
+      }
+    }
+
+    // Role suggestions added to match searchLeaderboard and searchUsers behaviour
+    if (user.role && user.role.toLowerCase().includes(searchTerm)) {
+      const key = `role:${user.role}`;
+      if (!suggestionsMap.has(key)) {
+        suggestionsMap.set(key, {
+          type: "role",
+          value: user.role,
+          display: `Role: ${user.role}`
         });
       }
     }
