@@ -16,7 +16,7 @@ import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
-import { doc, updateDoc, query, collection, where, getCountFromServer, getDocs } from "firebase/firestore";
+import { doc, updateDoc, runTransaction, query, collection, where, getCountFromServer, getDocs } from "firebase/firestore";
 
 // --- Language Definitions ---
 const LANGUAGES = [
@@ -627,97 +627,126 @@ export const CodingVerse = () => {
       setShowHeartAnimation((prev) => ({ ...prev, [qId]: false }));
     }, 800);
   };
-
   const handleVerifyAnswer = async (qId, isCorrect, submittedVal) => {
-    // Prevent double attempts
-    if (attemptedQuestions.includes(qId)) return;
+      // Prevent double attempts
+      if (attemptedQuestions.includes(qId)) return;
 
-    const targetQ = theoryQuestions.find(item => item.id === qId);
-    const difficulty = targetQ?.difficulty || "Easy";
-    const pointsMap = { "Easy": 100, "Medium": 150, "Hard": 200 };
-    const earnedPoints = pointsMap[difficulty];
+      const targetQ = theoryQuestions.find(item => item.id === qId);
+      const difficulty = targetQ?.difficulty || "Easy";
+      const pointsMap = { "Easy": 100, "Medium": 150, "Hard": 200 };
+      const earnedPoints = pointsMap[difficulty];
 
-    const newAttemptedQuestions = [...attemptedQuestions, qId];
-    let newSolvedQuestions = [...answeredQuestions];
-    let newCodingVersePoints = userData?.points?.codingVersePoints || 0;
-    let newTotalPoints = userData?.points?.totalPoints || 0;
-    
-    // CodingVerse Streak Implementation (Issue #201)
-    let newCodingVerseStreak = userData?.codingVerseStreak || 0;
-    let newStreakPoints = userData?.points?.streakPoints || 0;
-    let newLastCodingVerseSolveDate = userData?.lastCodingVerseSolveDate || null;
-    let earnedStreakPoints = 0;
+      if (user && userData) {
+        const userRef = doc(db, "users", user.uid);
+        let earnedStreakPointsForLog = 0;
 
-    if (isCorrect) {
-      newSolvedQuestions = [...answeredQuestions, qId];
-      newCodingVersePoints += earnedPoints;
+        try {
+          await runTransaction(db, async (transaction) => {
+            // Read live Firestore data inside the transaction to prevent stale
+            // client-side userData from overwriting concurrent updates
+            // (e.g. multiple tabs/devices answering questions in quick succession).
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) throw new Error("User document not found");
 
-      // Ensure timezone-agnostic boundaries using strict UTC Date strings
-      const today = new Date();
-      const todayUTCStr = today.toISOString().split('T')[0];
-      const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+            const liveData = userDoc.data();
 
-      if (newLastCodingVerseSolveDate) {
-        if (todayUTCStr !== newLastCodingVerseSolveDate) {
-          const lastDateParts = newLastCodingVerseSolveDate.split('-');
-          const lastUTC = Date.UTC(parseInt(lastDateParts[0]), parseInt(lastDateParts[1]) - 1, parseInt(lastDateParts[2]));
-          const diffDays = Math.floor((todayUTC - lastUTC) / (1000 * 60 * 60 * 24));
+            const liveAttempted = liveData.attemptedCodingVerseQuestions || [];
+            // Re-check against live data: if another session already recorded
+            // this attempt, bail out of the transaction entirely.
+            if (liveAttempted.includes(qId)) {
+              return;
+            }
 
-          if (diffDays === 1) {
-            newCodingVerseStreak += 1; // Maintained consecutive sequence
-          } else if (diffDays > 1) {
-            newCodingVerseStreak = 1; // Broken streak, reset
-          }
-          earnedStreakPoints = 5; // +5 XP for each new active solving day
-          newLastCodingVerseSolveDate = todayUTCStr;
+            const liveAnswered = liveData.solvedCodingVerseQuestions || [];
+            const liveAnswersState = liveData.codingVerseAnswers || {};
+
+            const newAttemptedQuestions = [...liveAttempted, qId];
+            let newSolvedQuestions = [...liveAnswered];
+            let newCodingVersePoints = liveData.points?.codingVersePoints || 0;
+            let newTotalPoints = liveData.points?.totalPoints || 0;
+
+            // CodingVerse Streak Implementation (Issue #201)
+            let newCodingVerseStreak = liveData.codingVerseStreak || 0;
+            let newStreakPoints = liveData.points?.streakPoints || 0;
+            let newLastCodingVerseSolveDate = liveData.lastCodingVerseSolveDate || null;
+            let earnedStreakPoints = 0;
+
+            if (isCorrect) {
+              newSolvedQuestions = [...liveAnswered, qId];
+              newCodingVersePoints += earnedPoints;
+
+              // Ensure timezone-agnostic boundaries using strict UTC Date strings
+              const today = new Date();
+              const todayUTCStr = today.toISOString().split('T')[0];
+              const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+
+              if (newLastCodingVerseSolveDate) {
+                if (todayUTCStr !== newLastCodingVerseSolveDate) {
+                  const lastDateParts = newLastCodingVerseSolveDate.split('-');
+                  const lastUTC = Date.UTC(parseInt(lastDateParts[0]), parseInt(lastDateParts[1]) - 1, parseInt(lastDateParts[2]));
+                  const diffDays = Math.floor((todayUTC - lastUTC) / (1000 * 60 * 60 * 24));
+
+                  if (diffDays === 1) {
+                    newCodingVerseStreak += 1; // Maintained consecutive sequence
+                  } else if (diffDays > 1) {
+                    newCodingVerseStreak = 1; // Broken streak, reset
+                  }
+                  earnedStreakPoints = 5; // +5 XP for each new active solving day
+                  newLastCodingVerseSolveDate = todayUTCStr;
+                }
+              } else {
+                newCodingVerseStreak = 1;
+                earnedStreakPoints = 5;
+                newLastCodingVerseSolveDate = todayUTCStr;
+              }
+
+              newStreakPoints += earnedStreakPoints;
+              newTotalPoints = (liveData.points?.gitRankPoints || 0) +
+                              (liveData.points?.referralPoints || 0) +
+                              newStreakPoints +
+                              newCodingVersePoints;
+            }
+
+            earnedStreakPointsForLog = earnedStreakPoints;
+
+            const newAnswersState = { ...liveAnswersState, [qId]: submittedVal };
+            const liveHubCoins = liveData.hubCoins || 0;
+
+            const updatePayload = {
+              "points.codingVersePoints": newCodingVersePoints,
+              "points.totalPoints": newTotalPoints,
+              "hubCoins": liveHubCoins + (isCorrect ? earnedPoints : 0),
+              "solvedCodingVerseQuestions": newSolvedQuestions,
+              "attemptedCodingVerseQuestions": newAttemptedQuestions,
+              "codingVerseAnswers": newAnswersState
+            };
+
+            // Only update streak data if they successfully answered and progressed
+            if (isCorrect) {
+              updatePayload["points.streakPoints"] = newStreakPoints;
+              updatePayload["codingVerseStreak"] = newCodingVerseStreak;
+              updatePayload["lastCodingVerseSolveDate"] = newLastCodingVerseSolveDate;
+            }
+
+            transaction.update(userRef, updatePayload);
+          });
+
+          console.log(`Submitted answer for ${qId}. Correct: ${isCorrect}. Arena Points: ${isCorrect ? earnedPoints : 0}. Streak Points: ${earnedStreakPointsForLog}`);
+        } catch (err) {
+          console.error("Failed to update points in database:", err);
         }
       } else {
-        newCodingVerseStreak = 1;
-        earnedStreakPoints = 5;
-        newLastCodingVerseSolveDate = todayUTCStr;
-      }
+        // Fallback local update for guests
+        const newAttemptedQuestions = [...attemptedQuestions, qId];
+        const newAnswersState = { ...answersState, [qId]: submittedVal };
 
-      newStreakPoints += earnedStreakPoints;
-      newTotalPoints = (userData?.points?.gitRankPoints || 0) + 
-                       (userData?.points?.referralPoints || 0) + 
-                       newStreakPoints + 
-                       newCodingVersePoints;
-    }
-
-    const newAnswersState = { ...answersState, [qId]: submittedVal };
-
-    if (user && userData) {
-      const userRef = doc(db, "users", user.uid);
-      try {
-        const updatePayload = {
-          "points.codingVersePoints": newCodingVersePoints,
-          "points.totalPoints": newTotalPoints,
-          "hubCoins": (userData.hubCoins || 0) + (isCorrect ? earnedPoints : 0),
-          "solvedCodingVerseQuestions": newSolvedQuestions,
-          "attemptedCodingVerseQuestions": newAttemptedQuestions,
-          "codingVerseAnswers": newAnswersState
-        };
-
-        // Only update streak data if they successfully answered and progressed
+        setLocalAttemptedQuestions(newAttemptedQuestions);
+        setLocalAnswersState(newAnswersState);
         if (isCorrect) {
-          updatePayload["points.streakPoints"] = newStreakPoints;
-          updatePayload["codingVerseStreak"] = newCodingVerseStreak;
-          updatePayload["lastCodingVerseSolveDate"] = newLastCodingVerseSolveDate;
+          setLocalSolvedQuestions([...answeredQuestions, qId]);
         }
-
-        await updateDoc(userRef, updatePayload);
-      } catch (err) {
-        console.error("Failed to update points in database:", err);
       }
-    } else {
-      // Fallback local update for guests
-      setLocalAttemptedQuestions(newAttemptedQuestions);
-      setLocalAnswersState(newAnswersState);
-      if (isCorrect) {
-        setLocalSolvedQuestions(newSolvedQuestions);
-      }
-    }
-  };
+    };
 
   // Calculate total XP gained from solved questions dynamically
   const codingVerseXPGained = answeredQuestions.reduce((sum, qId) => {
