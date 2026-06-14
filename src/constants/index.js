@@ -10,6 +10,7 @@ export const sidebarLinks = [
   { label: "Profile", path: "/dashboard/profile", icon: "User" },
   { label: "Settings", path: "/dashboard/settings", icon: "Settings" },
   { label: "Repo Auditor", path: "/dashboard/auditor", icon: "Activity" },
+  { label: "Repo Health", path: "/dashboard/repo-health", icon: "TrendingUp" },
   { label: "How it works", path: "?modal=how-it-works", icon: "HelpCircle" },
   { label: "About Us", path: "/about", icon: "Info" }
 ];

@@ -26,6 +26,7 @@ const Terms = React.lazy(() => import("../pages/Terms"));
 const Privacy = React.lazy(() => import("../pages/Privacy"));
 const Auditor = React.lazy(() => import("../pages/Auditor"));
 const CardBuilder = React.lazy(() => import("../pages/CardBuilder"));
+const RepoHealth = React.lazy(() => import("../pages/RepoHealth"));
 
 // Inline loading indicator
 const LoadingScreen = ({ message }) => (
@@ -126,6 +127,7 @@ export const AppRoutes = () => {
             <Route path="/rankher" element={<RankHer />} />
             <Route path="/codingverse" element={<CodingVerse />} />
             <Route path="/codingowl" element={<CodingOwl />} />
+            <Route path="/repo-health" element={<RepoHealth />} />
           </Route>
 
           {/* Standalone About Us page */}
@@ -159,6 +161,7 @@ export const AppRoutes = () => {
             <Route path="/dashboard/profile/:username" element={<Profile />} />
             <Route path="/dashboard/settings" element={<SettingsPage />} />
             <Route path="/dashboard/auditor" element={<Auditor />} />
+            <Route path="/dashboard/repo-health" element={<RepoHealth />} />
           </Route>
 
           {/* 404 Catch All */}
