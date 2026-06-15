@@ -2,11 +2,12 @@ import React, { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Pagination } from "swiper/modules";
+import { Autoplay, Pagination, Mousewheel } from "swiper/modules";
 
 // Import Swiper styles
 import "swiper/css";
 import "swiper/css/pagination";
+import "swiper/css/navigation";
 
 import {
   Sparkles,
@@ -384,7 +385,8 @@ export const Home = () => {
         {/* Feature slider using Swiper JS */}
         <div className="w-full max-w-6xl mx-auto px-6">
           <Swiper
-            modules={[Autoplay, Pagination]}
+            modules={[Autoplay, Pagination, Mousewheel]}
+            mousewheel={{ forceToAxis: true }}
             spaceBetween={24}
             slidesPerView={1}
             autoplay={{
