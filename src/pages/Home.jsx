@@ -25,7 +25,10 @@ import {
   GitPullRequest,
   Terminal,
   Flame,
-  CheckCircle2
+  CheckCircle2,
+  Star,
+  GitFork,
+  Eye
 } from "lucide-react";
 import { Github } from "../components/ui/Icons";
 import { fadeUp, staggerContainer } from "../utils/motion";
@@ -33,6 +36,8 @@ import GradientButton from "../components/ui/GradientButton";
 import Card from "../components/ui/Card";
 import logo from "../assets/logo.png";
 import GlowRingLogo from "../components/ui/GlowRingLogo";
+import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 const AnimatedNumber = ({ value, suffix = "", decimals = 0, duration = 2000 }) => {
   const [count, setCount] = useState(0);
@@ -93,8 +98,74 @@ const AnimatedNumber = ({ value, suffix = "", decimals = 0, duration = 2000 }) =
   return <span ref={elementRef}>{formatted}{suffix}</span>;
 };
 
+const fetchRepoStats = async () => {
+  try {
+    const res = await fetch("https://api.github.com/repos/indresh404/RankerHub");
+    if (!res.ok) {
+      throw new Error(`GitHub API returned status ${res.status}`);
+    }
+    const data = await res.json();
+    return {
+      stars: data.stargazers_count,
+      forks: data.forks_count,
+      watchers: data.watchers_count
+    };
+  } catch (err) {
+    console.error("Error fetching repo stats from GitHub:", err);
+    return null;
+  }
+};
+
+const fetchLiveUsersCount = async () => {
+  try {
+    if (!db) return null;
+    const q = query(collection(db, "users"), where("onboardingStatus", "==", "complete"));
+    const snap = await getCountFromServer(q);
+    return snap.data().count;
+  } catch (err) {
+    console.error("Error querying users collection from Firestore:", err);
+    return null;
+  }
+};
+
 export const Home = () => {
   const location = useLocation();
+
+  const [stats, setStats] = useState({
+    users: 85420,
+    stars: 120,
+    forks: 34,
+    watchers: 24
+  });
+
+  useEffect(() => {
+    let active = true;
+    const getStats = async () => {
+      const liveUsers = await fetchLiveUsersCount();
+      const repoStats = await fetchRepoStats();
+
+      if (!active) return;
+
+      setStats(prev => {
+        const nextStats = { ...prev };
+        if (liveUsers !== null) {
+          nextStats.users = liveUsers;
+        }
+        if (repoStats !== null) {
+          if (repoStats.stars !== undefined) nextStats.stars = repoStats.stars;
+          if (repoStats.forks !== undefined) nextStats.forks = repoStats.forks;
+          if (repoStats.watchers !== undefined) nextStats.watchers = repoStats.watchers;
+        }
+        return nextStats;
+      });
+    };
+
+    getStats();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (location.hash === "#features") {
@@ -185,10 +256,10 @@ export const Home = () => {
   ];
 
   const valueProps = [
-    { label: "Tracked Developers", numericValue: 85420, suffix: "+", decimals: 0, icon: Users },
-    { label: "Challenges Solved", numericValue: 1.2, suffix: "M+", decimals: 1, icon: Target },
-    { label: "Pull Requests Analyzed", numericValue: 3.4, suffix: "M+", decimals: 1, icon: Zap },
-    { label: "Global Badges Issued", numericValue: 24000, suffix: "+", decimals: 0, icon: Award }
+    { label: "Tracked Developers", numericValue: stats.users, suffix: "+", decimals: 0, icon: Users },
+    { label: "GitHub Stars", numericValue: stats.stars, suffix: "", decimals: 0, icon: Star },
+    { label: "GitHub Forks", numericValue: stats.forks, suffix: "", decimals: 0, icon: GitFork },
+    { label: "Project Watchers", numericValue: stats.watchers, suffix: "", decimals: 0, icon: Eye }
   ];
 
   const steps = [
